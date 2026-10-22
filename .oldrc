@@ -1,0 +1,8 @@
+alias drl='haxelib run lime build android'
+alias dr='haxelib run lime build android -debug'
+alias ld='haxelib run lime build linux'
+alias lw='haxelib run lime build windows -mingw -D mingw -D no_shared_libs'
+alias li='haxelib run lime build ios'
+alias c='clear'
+alias a='cd ~'
+alias s='source ~/.bashrc'
