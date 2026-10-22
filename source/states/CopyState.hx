@@ -225,8 +225,55 @@ class CopyState extends MusicBeatState
 		return file;
 	}
 
+	private static function deleteDirectoryRecursive(path:String):Void
+	{
+		if (!FileSystem.exists(path))
+			return;
+
+		if (FileSystem.isDirectory(path))
+		{
+			for (entry in FileSystem.readDirectory(path))
+				deleteDirectoryRecursive(Path.join([path, entry]));
+			FileSystem.deleteDirectory(path);
+		}
+		else
+		{
+			FileSystem.deleteFile(path);
+		}
+	}
+
+	private static function cleanLegacyTurkishMenuImages():Void
+	{
+		try
+		{
+			final legacyDir:String = 'assets/shared/images/tr-TR';
+			if (FileSystem.exists(legacyDir))
+				deleteDirectoryRecursive(legacyDir);
+
+			final trLangPath:String = 'assets/shared/data/tr-TR.lang';
+			if (FileSystem.exists(trLangPath))
+			{
+				final existingContent:String = File.getContent(trLangPath);
+				if (existingContent != null && existingContent.indexOf('images/tr-TR/') != -1)
+				{
+					final internalPath:String = getFile(trLangPath);
+					if (OpenFLAssets.exists(internalPath))
+						File.saveBytes(trLangPath, OpenFLAssets.getBytes(internalPath));
+					else
+						FileSystem.deleteFile(trLangPath);
+				}
+			}
+		}
+		catch (e:Dynamic)
+		{
+			trace('Failed to clean legacy tr-TR menu images: $e');
+		}
+	}
+
 	public static function checkExistingFiles():Bool
 	{
+		cleanLegacyTurkishMenuImages();
+
 		locatedFiles = OpenFLAssets.list();
 
 		// removes unwanted assets
