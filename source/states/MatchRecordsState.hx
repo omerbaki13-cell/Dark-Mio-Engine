@@ -136,7 +136,7 @@ class MatchRecordsState extends MusicBeatState
 		}
 		rows = [];
 
-		if(curSelected >= data.length) curSelected = Math.max(0, data.length - 1);
+		if(curSelected >= data.length) curSelected = Std.int(Math.max(0, data.length - 1));
 
 		for (i in 0...data.length)
 		{
