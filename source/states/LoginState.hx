@@ -213,7 +213,7 @@ statusText.text = isRegisterMode ? "Kayit basarisiz" : "Kullanici Adi Veya Sifre
 else if(err == "USER_EXISTS")
 statusText.text = "Bu kullanici adi zaten alinmis";
 else
-statusText.text = "Baglanti hatasi: " + err;
+statusText.text = turkceHata(err);
 return;
 }
 
@@ -241,6 +241,21 @@ statusText.text = "Sunucu hatasi";
 }
 }
 
+function turkceHata(err:String):String
+{
+if(err == "Blocked" || err == "Timeout" || err == "Eof")
+return "Sunucu yanit vermedi. Biraz bekleyip tekrar dene";
+if(err.indexOf("Http Error #5") == 0)
+return "Sunucu hatasi, biraz sonra tekrar dene";
+if(err.indexOf("Http Error #400") == 0)
+return "Gecersiz istek";
+if(err.indexOf("SSL") != -1 || err.indexOf("ertificate") != -1)
+return "Guvenli baglanti kurulamadi";
+if(err.indexOf("Failed") != -1 || err.indexOf("resolve") != -1)
+return "Internet baglantisi yok";
+return "Baglanti hatasi: " + err;
+}
+
 function doSubmit()
 {
 var username:String = usernameInput.text.trim();
@@ -254,46 +269,40 @@ return;
 
 isLoading = true;
 statusText.color = FlxColor.WHITE;
-statusText.text = "Yukleniyor...";
+statusText.text = "Sunucu uyaniyor, 1 dk surebilir...";
 
 var endpoint:String = isRegisterMode ? "/register" : "/login";
 Thread.create(function()
 {
-var http:Http = new Http(SERVER_URL + endpoint);
-http.setHeader("Content-Type", "application/json");
-http.setPostData(Json.stringify({username: username, password: password}));
-
 var resultText:String = null;
 var resultOk:Bool = false;
 var resultErr:String = null;
+var tries:Int = 0;
 
+while(tries < 2)
+{
+tries++;
+resultText = null; resultOk = false; resultErr = null;
 var statusCode:Int = 0;
-http.onStatus = function(status:Int)
+
+var http:Http = new Http(SERVER_URL + endpoint);
+http.cnxTimeout = 90;
+http.setHeader("Content-Type", "application/json");
+http.setPostData(Json.stringify({username: username, password: password}));
+
+http.onStatus = function(st:Int) { statusCode = st; }
+http.onData = function(d:String) { resultOk = true; resultText = d; }
+http.onError = function(e:String)
 {
-statusCode = status;
-}
-http.onData = function(data:String)
-{
-resultOk = true;
-resultText = data;
-}
-http.onError = function(error:String)
-{
-if(statusCode == 401 || statusCode == 404)
-resultErr = "AUTH_FAIL";
-else if(statusCode == 409)
-resultErr = "USER_EXISTS";
-else
-resultErr = error;
+if(statusCode == 401 || statusCode == 404) resultErr = "AUTH_FAIL";
+else if(statusCode == 409) resultErr = "USER_EXISTS";
+else resultErr = e;
 }
 
-try
-{
-http.request(false);
-}
-catch(e:Dynamic)
-{
-resultErr = Std.string(e);
+try { http.request(true); }
+catch(e:Dynamic) { resultErr = Std.string(e); }
+
+if(resultErr != "Blocked") break;
 }
 
 pendingResultOk = resultOk;
