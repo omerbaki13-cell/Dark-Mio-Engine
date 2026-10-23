@@ -48,7 +48,10 @@ var playerName:String = (backend.UserSession.isLoggedIn && backend.UserSession.u
 : "Giris Yapilmadi";
 var totalPoints:Int = backend.UserSession.points;
 
-var newText:String = playerName + "\n" + Language.getPhrase('account_points', 'Puanlar: {1}', [totalPoints]);
+var matchCount:Int = backend.MatchRecords.getMatches().length;
+var pendingSync:Int = backend.MatchRecords.pendingCount();
+var newText:String = playerName + "\n" + Language.getPhrase('account_points', 'Puanlar: {1}', [totalPoints])
++ "\n" + Language.getPhrase('match_summary', 'Maç: {1} | Bekleyen: {2}', [matchCount, pendingSync]);
 if(newText == lastLoginIndicatorText) return; // her frame'de gereksiz güncelleme yapma
 lastLoginIndicatorText = newText;
 
@@ -193,6 +196,9 @@ addTouchPad('NONE', 'E');
 
 		// Maçtan / şarkıdan dönüldüğünde puanlar anında güncellensin
 		updateLoginIndicatorText();
+
+		// Maç kayıtlarını render + Supabase tarafına gönder
+		backend.MatchRecords.tick();
 
 		if (!selectedSomethin)
 		{

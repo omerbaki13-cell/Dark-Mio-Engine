@@ -1,0 +1,6 @@
+{
+	"url": "https://PROJE.supabase.co",
+	"anon_key": "BURAYA_SUPABASE_ANON_KEY",
+	"table": "match_records",
+	"once_per_song": true
+}

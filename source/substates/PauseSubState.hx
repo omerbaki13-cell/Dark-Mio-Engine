@@ -111,7 +111,11 @@ class PauseSubState extends MusicBeatSubstate
 		infiniteModeText.visible = PlayState.instance != null && PlayState.instance.isInfiniteModeOn();
 		add(infiniteModeText);
 
-		accountPointsText = new FlxText(20, 15 + 175, 0, Language.getPhrase('account_points', 'Puanlar: {1}', [backend.UserSession.points]).toUpperCase(), 32);
+		var pointsText:String = Language.getPhrase('account_points', 'Puanlar: {1}', [backend.UserSession.points]);
+		var pendingPoints:Int = (PlayState.instance != null) ? PlayState.instance.comboPointsEarned : 0;
+		if(pendingPoints > 0)
+			pointsText = Language.getPhrase('points_match_pending', 'Puanlar: {1} (+{2} bu mac)', [backend.UserSession.points, pendingPoints]);
+		accountPointsText = new FlxText(20, 15 + 175, 0, pointsText.toUpperCase(), 32);
 		accountPointsText.scrollFactor.set();
 		accountPointsText.setFormat(Paths.font('vcr.ttf'), 32, 0xFFFFD34D);
 		accountPointsText.updateHitbox();
