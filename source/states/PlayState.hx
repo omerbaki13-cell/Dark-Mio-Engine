@@ -177,6 +177,20 @@ class PlayState extends MusicBeatState
 	public var health(default, set):Float = 1;
 	public var combo:Int = 0;
 
+	// ---- Kombo Puan Sistemi ----
+	// Her "comboPointsMilestone" komboda bir kere puan verilir.
+	public static var comboPointsMilestone:Int = 20;
+	public static var comboPointsReward:Int = 1; // Her eşikte (20 kombo) kazanılan puan
+	public static var maxComboPointMilestones:Int = 25; // Bir şarkıda en fazla kaç eşik ödüllendirilir
+	public var comboPointsEarned:Int = 0; // Bu maçta kazanılan toplam puan
+	var comboMilestonesReached:Int = 0; // Bu maçta ulaşılan eşik sayısı
+	public var highestCombo:Int = 0; // Bu maçtaki en yüksek kombo
+
+	// ---- Maç kayıt sistemi ----
+	public var matchId:String = ''; // Bu maçın tekil anahtarı (şarkı + zorluk)
+	public var matchAlreadyClaimed:Bool = false; // Bu maçtan daha önce puan alınmış mı?
+	var matchRecordDone:Bool = false; // Kayıt bir kez yazılsın
+
 	public var healthBar:Bar;
 	public var timeBar:Bar;
 	var songPercent:Float = 0;
@@ -198,10 +212,13 @@ class PlayState extends MusicBeatState
 	public var instakillOnMiss:Bool = false;
 	public var cpuControlled:Bool = false;
 	public var practiceMode:Bool = false;
+	public var infiniteMode:Bool = false;
 	public var pressMissDamage:Float = 0.05;
 
 	public var botplaySine:Float = 0;
 	public var botplayTxt:FlxText;
+	public var infiniteModeTxt:FlxText;
+	public var pointsStatusTxt:FlxText;
 
 	public var iconP1:HealthIcon;
 	public var iconP2:HealthIcon;
@@ -313,8 +330,13 @@ class PlayState extends MusicBeatState
 		healthLoss = ClientPrefs.getGameplaySetting('healthloss');
 		instakillOnMiss = ClientPrefs.getGameplaySetting('instakill');
 		practiceMode = ClientPrefs.getGameplaySetting('practice');
+		infiniteMode = ClientPrefs.getGameplaySettingBool('infinitemode');
 		cpuControlled = ClientPrefs.getGameplaySetting('botplay');
 		guitarHeroSustains = ClientPrefs.data.guitarHeroSustains;
+
+		// Maç kaydı: şarkı + zorluk anahtarı
+		matchId = backend.MatchRecords.makeMatchId(SONG.song, getDifficultyName());
+		matchAlreadyClaimed = backend.MatchRecords.hasClaimed(matchId);
 
 		// var gameCam:FlxCamera = FlxG.camera;
 		camGame = initPsychCamera();
@@ -583,6 +605,24 @@ class PlayState extends MusicBeatState
 		uiGroup.add(botplayTxt);
 		if(ClientPrefs.data.downScroll)
 			botplayTxt.y = healthBar.y + 70;
+
+		// Sonsuz Mod gerçekten açıksa oyun içinde de göster (kapalıyken hiç görünmez)
+		var statusY:Float = 20;
+		if(isInfiniteModeOn())
+		{
+			infiniteModeTxt = new FlxText(20, statusY, 0, Language.getPhrase("infinite_mode", "Infinite Mode: ON").toUpperCase(), 24);
+			infiniteModeTxt.setFormat(Paths.font("vcr.ttf"), 24, 0xFFFFD34D, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+			infiniteModeTxt.scrollFactor.set();
+			uiGroup.add(infiniteModeTxt);
+			statusY += 30;
+		}
+
+		// Bu maçta puan durumu (puan alınabiliyor mu?)
+		pointsStatusTxt = new FlxText(20, statusY, 0, '', 20);
+		pointsStatusTxt.setFormat(Paths.font("vcr.ttf"), 20, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		pointsStatusTxt.scrollFactor.set();
+		uiGroup.add(pointsStatusTxt);
+		updatePointsStatusText();
 
 		uiGroup.cameras = [camHUD];
 		noteGroup.cameras = [camHUD];
@@ -1757,6 +1797,10 @@ class PlayState extends MusicBeatState
 		if (healthBar.bounds.max != null && health > healthBar.bounds.max)
 			health = healthBar.bounds.max;
 
+		// Maç kaydı / Supabase gönderim kuyruğu
+		backend.MatchRecords.tick();
+		updatePointsStatusText();
+
 		updateIconsScale(elapsed);
 		updateIconsPosition();
 
@@ -2020,7 +2064,21 @@ class PlayState extends MusicBeatState
 
 	public var isDead:Bool = false; //Don't mess with this on Lua!!!
 	public var gameOverTimer:FlxTimer;
+
+	// "Infinite Mode" sadece AÇIK olduğunda çalışır.
+	// Kapalıyken ölüm kontrolü tamamen normal şekilde devam eder.
+	public inline function isInfiniteModeOn():Bool
+		return ClientPrefs.getGameplaySettingBool('infinitemode');
+
 	function doDeathCheck(?skipHealthCheck:Bool = false) {
+		// Infinite Mode AÇIKSA: ölüm ekranı hiç açılmaz, can 0'da kalıp oyun devam eder.
+		if (isInfiniteModeOn())
+		{
+			if (health <= 0)
+				health = 0.1;
+			return false;
+		}
+
 		if (((skipHealthCheck && instakillOnMiss) || health <= 0) && !practiceMode && !isDead && gameOverTimer == null)
 		{
 			var ret:Dynamic = callOnScripts('onGameOver', null, true);
@@ -2077,6 +2135,174 @@ class PlayState extends MusicBeatState
 			}
 		}
 		return false;
+	}
+
+	// ---------------------------------------------------------------
+	// PUAN KURALLARI
+	// - Botplay / Sonsuz Mod / Antrenman / Chart modu AÇIKSA puan yok
+	// - Aynı şarkı + zorluk için sadece 1 kez puan alınır
+	// - Her 20 komboda +comboPointsReward puan
+	// ---------------------------------------------------------------
+	public function getDifficultyName():String
+	{
+		var name:String = null;
+		if(Difficulty.list != null && storyDifficulty >= 0 && storyDifficulty < Difficulty.list.length)
+			name = Difficulty.list[storyDifficulty];
+		if(name == null || name.length < 1) name = 'Normal';
+		return name;
+	}
+
+	public function canEarnMatchPoints():Bool
+	{
+		return backend.MatchRecords.isEligible(cpuControlled, isInfiniteModeOn(), practiceMode, chartingMode);
+	}
+
+	public function updatePointsStatusText():Void
+	{
+		if(pointsStatusTxt == null) return;
+
+		var newText:String = '';
+		var newColor:Int = FlxColor.WHITE;
+
+		if(!canEarnMatchPoints())
+		{
+			newText = Language.getPhrase('points_disabled', 'PUAN: KAPALI (BOTPLAY / SONSUZ MOD)');
+			newColor = 0xFFFF6B6B;
+		}
+		else if(matchAlreadyClaimed || backend.MatchRecords.hasClaimed(matchId))
+		{
+			matchAlreadyClaimed = true;
+			newText = Language.getPhrase('points_already_claimed', 'PUAN: BU MACDAN ALINDI');
+			newColor = 0xFFFFD34D;
+		}
+		else
+		{
+			newText = Language.getPhrase('points_active', 'PUAN: {1} KOMBO = +{2}', [comboPointsMilestone, comboPointsReward]);
+			newColor = 0xFF8CFF8C;
+		}
+
+		if(pointsStatusTxt.text != newText)
+		{
+			pointsStatusTxt.text = newText;
+			pointsStatusTxt.color = newColor;
+		}
+	}
+
+	function checkComboPoints():Void
+	{
+		if(comboPointsMilestone <= 0 || comboPointsReward <= 0) return;
+		if(isDead || endingSong || startingSong) return;
+		// Botplay / Sonsuz Mod / Antrenman / Chart modu -> puan verilmez
+		if(!canEarnMatchPoints()) return;
+		// Bu maçtan puan zaten alınmış -> tekrar puan verilmez
+		if(matchAlreadyClaimed || backend.MatchRecords.hasClaimed(matchId)) return;
+
+		var reached:Int = Std.int(combo / comboPointsMilestone);
+		while(reached > comboMilestonesReached && comboMilestonesReached < maxComboPointMilestones)
+		{
+			comboMilestonesReached++;
+			grantComboPoints(comboPointsReward);
+		}
+	}
+
+	public function grantComboPoints(amount:Int):Void
+	{
+		if(amount <= 0) return;
+
+		// Puanlar maç boyunca birikir, şarkı BİTİNCE hesaba eklenir.
+		// Böylece ölüp yeniden başlayınca puan kaybedilmez/haksız kazanılmaz.
+		comboPointsEarned += amount;
+
+		callOnScripts('onComboPointsEarned', [amount, comboPointsEarned, backend.UserSession.points]);
+
+		showPointsPopup(Language.getPhrase('combo_points_milestone', '{1} KOMBO! +{2} PUAN', [combo, amount]), 0xFFFFD34D);
+		updatePointsStatusText();
+	}
+
+	function showPointsPopup(text:String, color:Int = 0xFFFFD34D):Void
+	{
+		if(camHUD == null) return;
+
+		var popup:FlxText = new FlxText(0, FlxG.height * 0.33, FlxG.width, text, 32);
+		popup.setFormat(Paths.font('vcr.ttf'), 32, color, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		popup.scrollFactor.set();
+		popup.cameras = [camHUD];
+		add(popup);
+
+		FlxTween.tween(popup, {alpha: 0, y: popup.y - 90}, 1.1, {
+			ease: FlxEase.quadOut,
+			onComplete: function(_) {
+				remove(popup, true);
+				popup.destroy();
+			}
+		});
+	}
+
+	// ---------------------------------------------------------------
+	// MAÇ KAYDI  (render dosyası + Supabase)
+	// Şarkı bittiğinde bir kez çağrılır.
+	// ---------------------------------------------------------------
+	public function finishMatchRecord():Void
+	{
+		if(matchRecordDone) return;
+		if(matchId == null || matchId.length < 1) return;
+		matchRecordDone = true;
+
+		var eligible:Bool = canEarnMatchPoints();
+		var alreadyClaimed:Bool = backend.MatchRecords.hasClaimed(matchId);
+		var earned:Int = 0;
+
+		// Puan sadece: maç geçerliyse + bu maçtan daha önce puan alınmadıysa
+		if(eligible && !alreadyClaimed && comboPointsEarned > 0)
+		{
+			earned = comboPointsEarned;
+			// Aynı maçtan ikinci kez puan çıkmaz
+			backend.MatchRecords.markClaimed(matchId);
+			matchAlreadyClaimed = true;
+			backend.UserSession.points += earned;
+
+			showPointsPopup(Language.getPhrase('points_earned_total', 'MAÇ SONU: +{1} PUAN', [earned]), 0xFFFFD34D);
+		}
+
+		var acc:Float = ratingPercent;
+		if(Math.isNaN(acc)) acc = 0;
+
+		backend.MatchRecords.completeMatch({
+			match_id: matchId,
+			username: backend.UserSession.username,
+			user_id: backend.UserSession.userId,
+			song: SONG.song,
+			difficulty: getDifficultyName(),
+			score: songScore,
+			max_combo: highestCombo,
+			misses: songMisses,
+			accuracy: Math.round(acc * 10000) / 100,
+			points: earned,
+			botplay: cpuControlled,
+			infinite_mode: isInfiniteModeOn(),
+			practice_mode: practiceMode,
+			story_mode: isStoryMode,
+			eligible: eligible
+		});
+
+		// Hesap sunucusuna da bildir (eski sistemle aynı uç nokta).
+		// Sadece puan alınabilen maçlarda ve puan kazanıldıysa gönderilir.
+		if(eligible && earned > 0 && backend.UserSession.isLoggedIn && backend.UserSession.userId >= 0)
+		{
+			var uid:Int = backend.UserSession.userId;
+			var songName:String = SONG.song;
+			sys.thread.Thread.create(function()
+			{
+				try
+				{
+					var http = new haxe.Http('https://psych-nm.onrender.com/score');
+					http.setHeader('Content-Type', 'application/json');
+					http.setPostData(haxe.Json.stringify({user_id: uid, score: earned, song_name: songName}));
+					http.request(false);
+				}
+				catch(e:Dynamic) {}
+			});
+		}
 	}
 
 	public function checkEventNote() {
@@ -2415,33 +2641,19 @@ class PlayState extends MusicBeatState
 	}
 
 	public function finishSong(?ignoreNoteOffset:Bool = false):Void
-{
-{
-PauseSubState.restartSong(true);
-return;
-}
-
-		if(backend.UserSession.isLoggedIn)
+	{
+		// SONSUZ MOD AÇIKSA: şarkı bitmez, baştan başlar.
+		// Kapalıyken normal şekilde şarkı biter (eskiden bu kontrol yoktu ve
+		// Sonsuz Mod kapalı olsa bile şarkı sürekli baştan başlıyordu).
+		if(isInfiniteModeOn())
 		{
-			var earnedPoints:Int = Std.int(songHits / 50);
-			if(earnedPoints > 0)
-			{
-				var uid:Int = backend.UserSession.userId;
-				backend.UserSession.points += earnedPoints;
-
-				sys.thread.Thread.create(function()
-				{
-					try
-					{
-						var http = new haxe.Http("https://psych-nm.onrender.com/score");
-						http.setHeader("Content-Type", "application/json");
-						http.setPostData(haxe.Json.stringify({user_id: uid, score: earnedPoints, song_name: PlayState.SONG.song}));
-						http.request(false);
-					}
-					catch(e:Dynamic) {}
-				});
-			}
+			finishMatchRecord();
+			PauseSubState.restartSong(true);
+			return;
 		}
+
+		// Puanlar artık kombo sisteminden geliyor (maç kaydı + sunucu aktarımı).
+		finishMatchRecord();
 
 		updateTime = false;
 		FlxG.sound.music.volume = 0;
@@ -2508,6 +2720,10 @@ return;
 			if(Math.isNaN(percent)) percent = 0;
 			Highscore.saveScore(Song.loadedSongName, songScore, storyDifficulty, percent);
 			#end
+
+			// Maç kaydı: render dosyası + Supabase
+			finishMatchRecord();
+
 			playbackRate = 1;
 
 			if (chartingMode)
@@ -3187,7 +3403,9 @@ return;
 			{
 				combo++;
 				if(combo > 9999) combo = 9999;
+				if(combo > highestCombo) highestCombo = combo;
 				popUpScore(note);
+				checkComboPoints();
 			}
 			var gainHealth:Bool = true; // prevent health gain, *if* sustains are treated as a singular note
 			if (guitarHeroSustains && note.isSustainNote) gainHealth = false;

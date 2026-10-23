@@ -247,6 +247,19 @@ class ClientPrefs {
 			var savedMap:Map<String, Dynamic> = FlxG.save.data.gameplaySettings;
 			for (name => value in savedMap)
 				data.gameplaySettings.set(name, value);
+
+			// Eski kayıtlarda bool ayarlar String ("true"/"false") olarak tutulmuş olabilir.
+			// Menüdeki tik ile oyun içindeki davranış aynı olsun diye burada düzeltiyoruz.
+			for (name in ['instakill', 'practice', 'botplay', 'opponentplay', 'infinitemode'])
+			{
+				if(!data.gameplaySettings.exists(name)) continue;
+				var value:Dynamic = data.gameplaySettings.get(name);
+				if(!Std.isOfType(value, Bool))
+				{
+					var str:String = Std.string(value).toLowerCase();
+					data.gameplaySettings.set(name, (str == 'true' || str == '1'));
+				}
+			}
 		}
 		
 		// flixel automatically saves your volume!
@@ -287,6 +300,17 @@ class ClientPrefs {
 	{
 		if(!customDefaultValue) defaultValue = defaultData.gameplaySettings.get(name);
 		return /*PlayState.isStoryMode ? defaultValue : */ (data.gameplaySettings.exists(name) ? data.gameplaySettings.get(name) : defaultValue);
+	}
+
+	// Bool ayarların kayıttan String/Int olarak geri gelme ihtimaline karşı güvenli okuma
+	public static function getGameplaySettingBool(name:String):Bool
+	{
+		var value:Dynamic = getGameplaySetting(name);
+		if(value == null) return false;
+		if(Std.isOfType(value, Bool)) return (value == true);
+
+		var str:String = Std.string(value).toLowerCase();
+		return str == 'true' || str == '1';
 	}
 
 	public static function reloadVolumeKeys()

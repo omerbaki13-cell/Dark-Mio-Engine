@@ -37,13 +37,41 @@ class MainMenuState extends MusicBeatState
 	var magenta:FlxSprite;
 	var camFollow:FlxObject;
 var loginIndicator:FlxText;
+var recordsBtn:FlxText;
+var lastLoginIndicatorText:String = null;
 
 function updateLoginIndicatorText()
 {
-loginIndicator.text = backend.UserSession.isLoggedIn
-? backend.UserSession.username + "\nPuanlar: " + backend.UserSession.points
-: "Giris Yapilmadi\nHesabina giris yap";
+if(loginIndicator == null) return;
+
+var playerName:String = (backend.UserSession.isLoggedIn && backend.UserSession.username != null)
+? backend.UserSession.username
+: "Giris Yapilmadi";
+var totalPoints:Int = backend.UserSession.points;
+
+var matchCount:Int = backend.MatchRecords.getMatches().length;
+var pendingSync:Int = backend.MatchRecords.pendingCount();
+var newText:String = playerName + "\n" + Language.getPhrase('account_points', 'Puanlar: {1}', [totalPoints])
++ "\n" + Language.getPhrase('match_summary', 'Maç: {1} | Bekleyen: {2}', [matchCount, pendingSync]);
+if(newText == lastLoginIndicatorText) return; // her frame'de gereksiz güncelleme yapma
+lastLoginIndicatorText = newText;
+
+loginIndicator.text = newText;
 loginIndicator.x = FlxG.width - loginIndicator.width - 15;
+}
+
+function isTouched(obj:FlxObject):Bool
+{
+if(obj == null) return false;
+
+if(FlxG.mouse.justPressed && FlxG.mouse.overlaps(obj))
+return true;
+
+for (touch in FlxG.touches.list)
+if(touch.justPressed && touch.overlaps(obj))
+return true;
+
+return false;
 }
 
 function checkLoginIndicatorTouch():Bool
@@ -148,12 +176,18 @@ return false;
 
 		FlxG.camera.follow(camFollow, null, 0.15);
 
-		loginIndicator = new FlxText(0, 15, 300, '', 20);
+		loginIndicator = new FlxText(0, 15, 500, '', 20);
 loginIndicator.setFormat(Paths.font("vcr.ttf"), 20, FlxColor.WHITE, RIGHT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 loginIndicator.scrollFactor.set();
 loginIndicator.x = FlxG.width - loginIndicator.width - 15;
 updateLoginIndicatorText();
 add(loginIndicator);
+
+// Maç Kayıtları butonu (sol üst)
+recordsBtn = new FlxText(15, 15, 0, Language.getPhrase('match_records_button', 'MAC KAYITLARI [TAB]'), 20);
+recordsBtn.setFormat(Paths.font("vcr.ttf"), 20, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+recordsBtn.scrollFactor.set();
+add(recordsBtn);
 
 addTouchPad('NONE', 'E');
 	}
@@ -181,6 +215,12 @@ addTouchPad('NONE', 'E');
 		if (FlxG.sound.music.volume < 0.8)
 			FlxG.sound.music.volume = Math.min(FlxG.sound.music.volume + 0.5 * elapsed, 0.8);
 
+		// Maçtan / şarkıdan dönüldüğünde puanlar anında güncellensin
+		updateLoginIndicatorText();
+
+		// Maç kayıtlarını render + Supabase tarafına gönder
+		backend.MatchRecords.tick();
+
 		if (!selectedSomethin)
 		{
 			if(checkLoginIndicatorTouch())
@@ -189,6 +229,22 @@ addTouchPad('NONE', 'E');
 				FlxG.sound.play(Paths.sound('confirmMenu'));
 				MusicBeatState.switchState(new states.LoginState());
 				return;
+			}
+
+			// Maç kayıtları ekranı
+			if(recordsBtn != null)
+			{
+				var overRecords:Bool = FlxG.mouse.overlaps(recordsBtn);
+				recordsBtn.color = overRecords ? 0xFFFFD34D : FlxColor.WHITE;
+
+				if(isTouched(recordsBtn) || FlxG.keys.justPressed.TAB)
+				{
+					selectedSomethin = true;
+					FlxG.mouse.visible = false;
+					FlxG.sound.play(Paths.sound('confirmMenu'));
+					MusicBeatState.switchState(new MatchRecordsState());
+					return;
+				}
 			}
 
 			if (controls.UI_UP_P)
