@@ -177,6 +177,14 @@ class PlayState extends MusicBeatState
 	public var health(default, set):Float = 1;
 	public var combo:Int = 0;
 
+	// ---- Kombo Puan Sistemi ----
+	// Her "comboPointsMilestone" komboda bir kere puan verilir.
+	public static var comboPointsMilestone:Int = 20;
+	public static var comboPointsReward:Int = 10; // Her eşikte kazanılan puan
+	public static var maxComboPointMilestones:Int = 25; // Bir şarkıda en fazla kaç eşik ödüllendirilir
+	public var comboPointsEarned:Int = 0; // Bu şarkıda kazanılan toplam puan
+	var comboMilestonesReached:Int = 0; // Bu şarkıda ulaşılan eşik sayısı
+
 	public var healthBar:Bar;
 	public var timeBar:Bar;
 	var songPercent:Float = 0;
@@ -198,10 +206,12 @@ class PlayState extends MusicBeatState
 	public var instakillOnMiss:Bool = false;
 	public var cpuControlled:Bool = false;
 	public var practiceMode:Bool = false;
+	public var infiniteMode:Bool = false;
 	public var pressMissDamage:Float = 0.05;
 
 	public var botplaySine:Float = 0;
 	public var botplayTxt:FlxText;
+	public var infiniteModeTxt:FlxText;
 
 	public var iconP1:HealthIcon;
 	public var iconP2:HealthIcon;
@@ -313,6 +323,7 @@ class PlayState extends MusicBeatState
 		healthLoss = ClientPrefs.getGameplaySetting('healthloss');
 		instakillOnMiss = ClientPrefs.getGameplaySetting('instakill');
 		practiceMode = ClientPrefs.getGameplaySetting('practice');
+		infiniteMode = ClientPrefs.getGameplaySettingBool('infinitemode');
 		cpuControlled = ClientPrefs.getGameplaySetting('botplay');
 		guitarHeroSustains = ClientPrefs.data.guitarHeroSustains;
 
@@ -583,6 +594,15 @@ class PlayState extends MusicBeatState
 		uiGroup.add(botplayTxt);
 		if(ClientPrefs.data.downScroll)
 			botplayTxt.y = healthBar.y + 70;
+
+		// Sonsuz Mod gerçekten açıksa oyun içinde de göster (kapalıyken hiç görünmez)
+		if(isInfiniteModeOn())
+		{
+			infiniteModeTxt = new FlxText(20, 20, 0, Language.getPhrase("infinite_mode", "Infinite Mode: ON").toUpperCase(), 24);
+			infiniteModeTxt.setFormat(Paths.font("vcr.ttf"), 24, 0xFFFFD34D, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+			infiniteModeTxt.scrollFactor.set();
+			uiGroup.add(infiniteModeTxt);
+		}
 
 		uiGroup.cameras = [camHUD];
 		noteGroup.cameras = [camHUD];
@@ -2020,7 +2040,21 @@ class PlayState extends MusicBeatState
 
 	public var isDead:Bool = false; //Don't mess with this on Lua!!!
 	public var gameOverTimer:FlxTimer;
+
+	// "Infinite Mode" sadece AÇIK olduğunda çalışır.
+	// Kapalıyken ölüm kontrolü tamamen normal şekilde devam eder.
+	public inline function isInfiniteModeOn():Bool
+		return ClientPrefs.getGameplaySettingBool('infinitemode');
+
 	function doDeathCheck(?skipHealthCheck:Bool = false) {
+		// Infinite Mode AÇIKSA: ölüm ekranı hiç açılmaz, can 0'da kalıp oyun devam eder.
+		if (isInfiniteModeOn())
+		{
+			if (health <= 0)
+				health = 0.1;
+			return false;
+		}
+
 		if (((skipHealthCheck && instakillOnMiss) || health <= 0) && !practiceMode && !isDead && gameOverTimer == null)
 		{
 			var ret:Dynamic = callOnScripts('onGameOver', null, true);
@@ -2077,6 +2111,57 @@ class PlayState extends MusicBeatState
 			}
 		}
 		return false;
+	}
+
+	// ---------------------------------------------------------------
+	// KOMBO PUAN SİSTEMİ
+	// Her 20 komboda bir oyuncuya puan verilir ve bu puan hesaba işlenir.
+	// Botplay, antrenman ve chart modunda puan kazanılmaz.
+	// ---------------------------------------------------------------
+	function checkComboPoints():Void
+	{
+		if(comboPointsMilestone <= 0 || comboPointsReward <= 0) return;
+		if(cpuControlled || practiceMode || chartingMode) return;
+		if(isDead || endingSong || startingSong) return;
+
+		var reached:Int = Std.int(combo / comboPointsMilestone);
+		while(reached > comboMilestonesReached && comboMilestonesReached < maxComboPointMilestones)
+		{
+			comboMilestonesReached++;
+			grantComboPoints(comboPointsReward);
+		}
+	}
+
+	public function grantComboPoints(amount:Int):Void
+	{
+		if(amount <= 0) return;
+
+		comboPointsEarned += amount;
+		backend.UserSession.points += amount;
+
+		callOnScripts('onComboPointsEarned', [amount, comboPointsEarned, backend.UserSession.points]);
+
+		showComboPointsPopup(amount, combo);
+	}
+
+	function showComboPointsPopup(amount:Int, currentCombo:Int):Void
+	{
+		if(camHUD == null) return;
+
+		var popupText:String = Language.getPhrase('combo_points_milestone', '{1} KOMBO! +{2} PUAN', [currentCombo, amount]);
+		var popup:FlxText = new FlxText(0, FlxG.height * 0.33, FlxG.width, popupText, 32);
+		popup.setFormat(Paths.font('vcr.ttf'), 32, 0xFFFFD34D, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+		popup.scrollFactor.set();
+		popup.cameras = [camHUD];
+		add(popup);
+
+		FlxTween.tween(popup, {alpha: 0, y: popup.y - 90}, 1.1, {
+			ease: FlxEase.quadOut,
+			onComplete: function(_) {
+				remove(popup, true);
+				popup.destroy();
+			}
+		});
 	}
 
 	public function checkEventNote() {
@@ -3188,6 +3273,7 @@ return;
 				combo++;
 				if(combo > 9999) combo = 9999;
 				popUpScore(note);
+				checkComboPoints();
 			}
 			var gainHealth:Bool = true; // prevent health gain, *if* sustains are treated as a singular note
 			if (guitarHeroSustains && note.isSustainNote) gainHealth = false;

@@ -37,12 +37,22 @@ class MainMenuState extends MusicBeatState
 	var magenta:FlxSprite;
 	var camFollow:FlxObject;
 var loginIndicator:FlxText;
+var lastLoginIndicatorText:String = null;
 
 function updateLoginIndicatorText()
 {
-loginIndicator.text = backend.UserSession.isLoggedIn
-? backend.UserSession.username + "\nPuanlar: " + backend.UserSession.points
-: "Giris Yapilmadi\nHesabina giris yap";
+if(loginIndicator == null) return;
+
+var playerName:String = (backend.UserSession.isLoggedIn && backend.UserSession.username != null)
+? backend.UserSession.username
+: "Giris Yapilmadi";
+var totalPoints:Int = backend.UserSession.points;
+
+var newText:String = playerName + "\n" + Language.getPhrase('account_points', 'Puanlar: {1}', [totalPoints]);
+if(newText == lastLoginIndicatorText) return; // her frame'de gereksiz güncelleme yapma
+lastLoginIndicatorText = newText;
+
+loginIndicator.text = newText;
 loginIndicator.x = FlxG.width - loginIndicator.width - 15;
 }
 
@@ -148,7 +158,7 @@ return false;
 
 		FlxG.camera.follow(camFollow, null, 0.15);
 
-		loginIndicator = new FlxText(0, 15, 300, '', 20);
+		loginIndicator = new FlxText(0, 15, 500, '', 20);
 loginIndicator.setFormat(Paths.font("vcr.ttf"), 20, FlxColor.WHITE, RIGHT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 loginIndicator.scrollFactor.set();
 loginIndicator.x = FlxG.width - loginIndicator.width - 15;
@@ -180,6 +190,9 @@ addTouchPad('NONE', 'E');
 	{
 		if (FlxG.sound.music.volume < 0.8)
 			FlxG.sound.music.volume = Math.min(FlxG.sound.music.volume + 0.5 * elapsed, 0.8);
+
+		// Maçtan / şarkıdan dönüldüğünde puanlar anında güncellensin
+		updateLoginIndicatorText();
 
 		if (!selectedSomethin)
 		{

@@ -22,6 +22,7 @@ class PauseSubState extends MusicBeatSubstate
 	var pauseMusic:FlxSound;
 	var practiceText:FlxText;
 	var infiniteModeText:FlxText;
+	var accountPointsText:FlxText;
 	var skipTimeText:FlxText;
 	var skipTimeTracker:Alphabet;
 	var curTime:Float = Math.max(0, Conductor.songPosition);
@@ -100,13 +101,22 @@ class PauseSubState extends MusicBeatSubstate
 		practiceText.updateHitbox();
 		practiceText.visible = PlayState.instance.practiceMode;
 		add(practiceText);
-infiniteModeText = new FlxText(20, 15 + 138, 0, Language.getPhrase("infinite_mode", "Infinite Mode: ON").toUpperCase(), 32);
-infiniteModeText.scrollFactor.set();
-infiniteModeText.setFormat(Paths.font('vcr.ttf'), 32);
-infiniteModeText.x = FlxG.width - (infiniteModeText.width + 20);
-infiniteModeText.updateHitbox();
-infiniteModeText.visible = ClientPrefs.getGameplaySetting('infinitemode') == true;
-add(infiniteModeText);
+
+		infiniteModeText = new FlxText(20, 15 + 138, 0, Language.getPhrase("infinite_mode", "Infinite Mode: ON").toUpperCase(), 32);
+		infiniteModeText.scrollFactor.set();
+		infiniteModeText.setFormat(Paths.font('vcr.ttf'), 32);
+		infiniteModeText.updateHitbox();
+		infiniteModeText.x = FlxG.width - (infiniteModeText.width + 20);
+		// Sadece Sonsuz Mod gerçekten AÇIKSA gösterilir (canlı kontrol)
+		infiniteModeText.visible = PlayState.instance != null && PlayState.instance.isInfiniteModeOn();
+		add(infiniteModeText);
+
+		accountPointsText = new FlxText(20, 15 + 175, 0, Language.getPhrase('account_points', 'Puanlar: {1}', [backend.UserSession.points]).toUpperCase(), 32);
+		accountPointsText.scrollFactor.set();
+		accountPointsText.setFormat(Paths.font('vcr.ttf'), 32, 0xFFFFD34D);
+		accountPointsText.updateHitbox();
+		accountPointsText.x = FlxG.width - (accountPointsText.width + 20);
+		add(accountPointsText);
 
 
 		var chartingText:FlxText = new FlxText(20, 15 + 101, 0, Language.getPhrase("Charting Mode").toUpperCase(), 32);

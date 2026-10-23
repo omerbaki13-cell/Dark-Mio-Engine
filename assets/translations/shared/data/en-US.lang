@@ -32,6 +32,8 @@ pause_options: "Options"
 pause_exit_to_menu: "Exit to Menu"
 pause_back: "Back"
 practice_mode: "Practice Mode"
+account_points: "Points: {1}"
+combo_points_milestone: "{1} COMBO! +{2} POINTS"
 charting_mode: "Charting Mode"
 blueballed: "Blueballed: {1}"
 
