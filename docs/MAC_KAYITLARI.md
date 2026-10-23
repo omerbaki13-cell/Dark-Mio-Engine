@@ -6,7 +6,7 @@ Bu sistem bir şarkı (maç) bittiğinde sonucu kaydeder.
 
 | Durum | Puan |
 |---|---|
-| Her **20 kombo** | **+10 puan** (40, 60, 80… diye devam eder) |
+| Her **20 kombo** | **+1 puan** (40, 60, 80… diye devam eder) |
 | Botplay açık | ❌ Puan yok |
 | Sonsuz Mod (Infinite Mode) açık | ❌ Puan yok |
 | Antrenman (Practice) modu | ❌ Puan yok |
@@ -17,14 +17,25 @@ Bu sistem bir şarkı (maç) bittiğinde sonucu kaydeder.
   Böylece ölüp yeniden başlarsan puan kaybetmezsin, şarkıyı bitirirsen kazanırsın.
 - Şarkı bitip puan hesaba yazıldığı an o maç "alındı" olarak işaretlenir
   (`MioEngine/mio_matches` kaydı), yani aynı şarkı + zorluk kombinasyonundan ikinci kez puan çıkmaz.
-- Bir maçta en fazla **25 eşik** ödüllendirilir (en fazla 250 puan).
+- Bir maçta en fazla **25 eşik** ödüllendirilir (en fazla 25 puan).
 - Oyun içinde sol üstte puan durumu yazar:
-  - `PUAN: 20 KOMBO = +10` → puan alınabilir
+  - `PUAN: 20 KOMBO = +1` → puan alınabilir
   - `PUAN: KAPALI (BOTPLAY / SONSUZ MOD)` → puan yok
   - `PUAN: BU MAÇTAN ALINDI` → bu şarkıdan daha önce puan alınmış
 
 > "Her oynayışta tekrar puan alınsın" istersen `source/backend/MatchRecords.hx` içindeki
 > `oncePerSong` değerini `false` yap (veya `mods/supabase.json` içine `"once_per_song": false` ekle).
+
+## 0) Oyun içi "Maç Kayıtları" ekranı
+
+Ana menüde sol üstte **MAÇ KAYITLARI [TAB]** yazısı vardır:
+
+- Tıkla / dokun ya da **TAB** tuşuna bas → maç listesi açılır.
+- Listede: sıra, şarkı (zorluk), skor, en yüksek kombo, kazanılan puan ve durum
+  (`SENKRON` / `BEKLİYOR` / `PUANSIZ`) görünür.
+- `ONAY` (veya ekrandaki A) → bekleyen kayıtları tekrar göndermeyi dener.
+- `SIFIRLA` (veya ekrandaki B) → listeyi yeniler.
+- `GERİ` → ana menüye döner.
 
 ## 1) Render dosyası
 

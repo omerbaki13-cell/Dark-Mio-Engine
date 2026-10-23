@@ -37,6 +37,7 @@ class MainMenuState extends MusicBeatState
 	var magenta:FlxSprite;
 	var camFollow:FlxObject;
 var loginIndicator:FlxText;
+var recordsBtn:FlxText;
 var lastLoginIndicatorText:String = null;
 
 function updateLoginIndicatorText()
@@ -57,6 +58,20 @@ lastLoginIndicatorText = newText;
 
 loginIndicator.text = newText;
 loginIndicator.x = FlxG.width - loginIndicator.width - 15;
+}
+
+function isTouched(obj:FlxObject):Bool
+{
+if(obj == null) return false;
+
+if(FlxG.mouse.justPressed && FlxG.mouse.overlaps(obj))
+return true;
+
+for (touch in FlxG.touches.list)
+if(touch.justPressed && touch.overlaps(obj))
+return true;
+
+return false;
 }
 
 function checkLoginIndicatorTouch():Bool
@@ -168,6 +183,12 @@ loginIndicator.x = FlxG.width - loginIndicator.width - 15;
 updateLoginIndicatorText();
 add(loginIndicator);
 
+// Maç Kayıtları butonu (sol üst)
+recordsBtn = new FlxText(15, 15, 0, Language.getPhrase('match_records_button', 'MAC KAYITLARI [TAB]'), 20);
+recordsBtn.setFormat(Paths.font("vcr.ttf"), 20, FlxColor.WHITE, LEFT, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+recordsBtn.scrollFactor.set();
+add(recordsBtn);
+
 addTouchPad('NONE', 'E');
 	}
 
@@ -208,6 +229,22 @@ addTouchPad('NONE', 'E');
 				FlxG.sound.play(Paths.sound('confirmMenu'));
 				MusicBeatState.switchState(new states.LoginState());
 				return;
+			}
+
+			// Maç kayıtları ekranı
+			if(recordsBtn != null)
+			{
+				var overRecords:Bool = FlxG.mouse.overlaps(recordsBtn);
+				recordsBtn.color = overRecords ? 0xFFFFD34D : FlxColor.WHITE;
+
+				if(isTouched(recordsBtn) || FlxG.keys.justPressed.TAB)
+				{
+					selectedSomethin = true;
+					FlxG.mouse.visible = false;
+					FlxG.sound.play(Paths.sound('confirmMenu'));
+					MusicBeatState.switchState(new MatchRecordsState());
+					return;
+				}
 			}
 
 			if (controls.UI_UP_P)

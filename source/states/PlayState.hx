@@ -180,7 +180,7 @@ class PlayState extends MusicBeatState
 	// ---- Kombo Puan Sistemi ----
 	// Her "comboPointsMilestone" komboda bir kere puan verilir.
 	public static var comboPointsMilestone:Int = 20;
-	public static var comboPointsReward:Int = 10; // Her eşikte kazanılan puan
+	public static var comboPointsReward:Int = 1; // Her eşikte (20 kombo) kazanılan puan
 	public static var maxComboPointMilestones:Int = 25; // Bir şarkıda en fazla kaç eşik ödüllendirilir
 	public var comboPointsEarned:Int = 0; // Bu maçta kazanılan toplam puan
 	var comboMilestonesReached:Int = 0; // Bu maçta ulaşılan eşik sayısı
