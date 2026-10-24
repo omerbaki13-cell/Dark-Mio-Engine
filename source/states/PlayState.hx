@@ -2220,7 +2220,7 @@ class PlayState extends MusicBeatState
 		comboPointsLog.push({
 			combo: combo,
 			points: amount,
-			at: FlxStringUtil.formatTime(Math.floor(Math.max(0, Conductor.songPosition) / 1000), false),
+			at: FlxStringUtil.formatTime(Std.int(Math.max(0, Conductor.songPosition) / 1000), false),
 			step: curStep
 		});
 

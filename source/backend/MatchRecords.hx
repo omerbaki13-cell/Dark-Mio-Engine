@@ -142,7 +142,7 @@ class MatchRecords
 		var dirs:Array<String> = [];
 
 		#if sys
-		try dirs.push(Sys.getCwd()); catch(e:Dynamic) {}
+		try { dirs.push(Sys.getCwd()); } catch(e:Dynamic) {}
 		try
 		{
 			var prog:String = Sys.programPath();
@@ -156,7 +156,7 @@ class MatchRecords
 		#end
 
 		#if sys
-		try dirs.push(StorageUtil.getStorageDirectory()); catch(e:Dynamic) {}
+		try { dirs.push(StorageUtil.getStorageDirectory()); } catch(e:Dynamic) {}
 		#end
 
 		// Tekrarları temizle + sonuna / ekle

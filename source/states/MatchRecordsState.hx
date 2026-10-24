@@ -101,7 +101,7 @@ class MatchRecordsState extends MusicBeatState
 		addTouchPadCamera();
 
 		canLeave = false;
-		new FlxTimer().start(0.4, function(_) canLeave = true);
+		new FlxTimer().start(0.4, function(_) { canLeave = true; });
 	}
 
 	function buildHeader():String
@@ -177,7 +177,7 @@ class MatchRecordsState extends MusicBeatState
 		if(rec.points_log != null && rec.points_log.length > 0)
 		{
 			var parts:Array<String> = [];
-			for(entry in rec.points_log)
+			for(entry in (cast rec.points_log : Array<Dynamic>))
 			{
 				if(entry == null) continue;
 				parts.push(Std.string(entry.combo) + 'x @' + Std.string(entry.at) + ' = +' + Std.string(entry.points));
@@ -208,7 +208,7 @@ class MatchRecordsState extends MusicBeatState
 		}
 		rows = [];
 
-		if(curSelected >= data.length) curSelected = Math.max(0, data.length - 1);
+		if(curSelected >= data.length) curSelected = Std.int(Math.max(0, data.length - 1));
 
 		for (i in 0...data.length)
 		{
