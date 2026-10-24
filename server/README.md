@@ -122,12 +122,20 @@ Tüm cevaplar JSON. Hata formatı: `{ "success": false, "error": "mesaj" }`.
 | `POST` | `/login` | `{username, password}` | `{success, user_id, username, points}` · `401` hatalıysa |
 | `POST` | `/score` | `{user_id, score, song_name, points?, match_id?}` | `{success, points, added, duplicate}` |
 | `GET` | `/leaderboard` | `?limit=25` | `{leaderboard:[{rank,user_id,username,points,songs_played,best_score,last_played}], updated_at}` |
+| `GET` | `/profile/:id` | — | `{success, user_id, username, points, songs_played, best_score, last_played}` |
+| `GET` | `/profile` | `?username=baki` | aynı (istemci eski `user_id` taşıyorsa doğru kimliği bulur) |
+| `POST` | `/sync` | `{user_id, points}` | `{success, points, added}` — sadece **yukarı** yazar, puan asla azalmaz |
+
+`/profile` ve `/sync`, oyunun **"PUANI YENILE"** düğmesi içindir: sunucudaki puanı
+okur, yerel puan daha yüksekse aradaki farkı sunucuya taşır. Şifre/hash dönmez.
 
 `/register` kuralları: kullanıcı adı `^[A-Za-z0-9_-]{2,24}$`, şifre en az 4 karakter.
 
 `/score` notları:
 - `points` verilmezse `score` puan olarak sayılır (eski istemciler bozulmasın diye).
 - `match_id` verilirse aynı maç ikinci kez puan yazmaz → `duplicate: true`, `added: 0`.
+  Bu yüzden oyun her oynayışta **farklı** `match_id` üretir (`once_per_song: false`);
+  `true` iken bir şarkıdan ömür boyu tek puan geliyordu.
 - Oyun tarafındaki ekonomi: **20 kombo = 1 puan**, maç başına en fazla 25 puan.
 
 Geriye dönük uyumluluk: `GET /leaderboard?raw=1` eski `scores` tabanlı listeyi
@@ -224,6 +232,8 @@ Render'da **Root Directory** olarak `server` yazmayı unutma.
 ## 8. Notlar
 
 - CORS tamamen açıktır: oyun istemcisi (Flixel/Haxe) doğrudan çağırabilir.
-- Gövde limiti 64 KB, yönetim rotalarında dakikada 20 istek sınırı vardır.
+- Gövde limiti 64 KB. Hız sınırları ayrı sayaçlarla: giriş/kayıt dakikada 20,
+  skor/profil/sync dakikada 300 (aynı IP arkasında birden fazla oyuncu olabilir).
+- Yönetim rotalarında dakikada 20 istek sınırı vardır.
 - Aynı kullanıcı adıyla kayıt `409` döner (Supabase'de `23505` yakalanır).
 - Şifreler `bcrypt` ile hashlenir; hiçbir cevapta hash veya `service_role` dönmez.

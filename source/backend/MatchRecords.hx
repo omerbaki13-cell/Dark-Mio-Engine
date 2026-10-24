@@ -32,9 +32,12 @@ class MatchRecords
 	public static var SUPABASE_ANON_KEY:String = '';
 	public static var SUPABASE_TABLE:String = 'match_records';
 
-	// true  -> aynı şarkı + zorluk için ömür boyu tek puan
-	// false -> her oynayış ayrı maç sayılır
-	public static var oncePerSong:Bool = true;
+	// true  -> aynı şarkı + zorluk için ömür boyu tek puan  (puan bir daha gelmez!)
+	// false -> her oynayış ayrı maç sayılır (VARSAYILAN)
+	// NOT: true iken bir şarkıyı ilk kez bitirdikten sonra o şarkıdan bir daha
+	// puan alınamıyordu ve hesap sunucusuna da hiç istek gitmiyordu; bu yüzden
+	// varsayılan false yapıldı. Ayar dosyasındaki "once_per_song" bunu ezebilir.
+	public static var oncePerSong:Bool = false;
 
 	public static var RENDER_FILE_NAME:String = 'render-ingame.json';
 	public static var MAX_PENDING:Int = 50;
@@ -345,7 +348,12 @@ class MatchRecords
 	{
 		ensure();
 		if(matchId == null) return;
-		if(!_claimed.contains(matchId)) _claimed.push(matchId);
+		if(!_claimed.contains(matchId))
+		{
+			_claimed.push(matchId);
+			// her oynayış ayrı anahtar ürettiği için liste sonsuz büyümesin
+			while(_claimed.length > 500) _claimed.shift();
+		}
 		if(points > 0) _awardedTotal += points;
 		flush();
 	}

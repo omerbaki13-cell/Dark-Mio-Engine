@@ -49,8 +49,10 @@ Efektif istek adresi her zaman: `https://PROJE.supabase.co/rest/v1/match_records
   - `PUAN: KAPALI (BOTPLAY / SONSUZ MOD)` → puan yok
   - `PUAN: BU MAÇTAN ALINDI` → bu şarkıdan daha önce puan alınmış
 
-> "Her oynayışta tekrar puan alınsın" istersen `source/backend/MatchRecords.hx` içindeki
-> `oncePerSong` değerini `false` yap (veya `mods/supabase.json` içine `"once_per_song": false` ekle).
+> **Varsayılan artık `false`**: her oynayış ayrı maç sayılır, puan her seferinde gelir.
+> `true` yaparsan bir şarkıyı ilk kez bitirdikten sonra o şarkıdan **ömür boyu** puan
+> alamazsın ve hesap sunucusuna hiç istek gitmez (eski "puan gelmiyor" hatası buydu).
+> Ayarı `mods/supabase.json` içindeki `"once_per_song"` ile de değiştirebilirsin.
 
 ## 0) Oyun içi "Maç Kayıtları" ekranı
 
@@ -137,7 +139,7 @@ Aynı dosya `example_mods/` içine de konabilir.
   "url": "https://PROJE.supabase.co",
   "anon_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9....",
   "table": "match_records",
-  "once_per_song": true
+  "once_per_song": false
 }
 ```
 
