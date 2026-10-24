@@ -64,7 +64,11 @@ Ana menüde sol üstte **MAÇ KAYITLARI [TAB]** yazısı vardır:
 - Üstte Supabase ayar durumu: ayar yoksa kırmızı, bağlıysa yeşil + son HTTP kodu.
 - `ONAY` (veya ekrandaki A) → bekleyen kayıtları tekrar göndermeyi dener.
 - `SIFIRLA` (veya ekrandaki B) → listeyi yeniler.
+- **`SHIFT` basılı tutup `SIFIRLA`** → "puan alındı" işaretlerini temizler (test için:
+  aynı şarkıdan yeniden puan alabilirsin; maç kayıtları silinmez).
 - `GERİ` → ana menüye döner.
+
+> Test sırasında bir şarkıdan puan aldıysan ve tekrar denemek istiyorsan bu kısayolu kullan.
 
 ## 1) Render dosyası
 

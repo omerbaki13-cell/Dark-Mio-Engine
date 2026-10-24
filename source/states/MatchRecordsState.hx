@@ -282,9 +282,15 @@ class MatchRecordsState extends MusicBeatState
 			reloadData();
 		}
 
-		// Kayıtları yenile
+		// Kayıtları yenile  (SHIFT + SIFIRLA -> puan haklarını sıfırla)
 		if (controls.RESET || touchPad.buttonB.justPressed)
 		{
+			if (FlxG.keys.pressed.SHIFT && controls.RESET)
+			{
+				var cleared:Int = backend.MatchRecords.resetClaimed();
+				FlxG.sound.play(Paths.sound('cancelMenu'), 0.7);
+				trace('MatchRecords: ' + cleared + ' puan hakkı sıfırlandı');
+			}
 			reloadData();
 			FlxG.sound.play(Paths.sound('scrollMenu'), 0.6);
 		}

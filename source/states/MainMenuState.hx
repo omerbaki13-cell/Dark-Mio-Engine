@@ -53,6 +53,13 @@ var matchCount:Int = backend.MatchRecords.getMatches().length;
 var pendingSync:Int = backend.MatchRecords.pendingCount();
 var newText:String = playerName + "\n" + Language.getPhrase('account_points', 'Puanlar: {1}', [totalPoints])
 + "\n" + Language.getPhrase('match_summary', 'Maç: {1} | Bekleyen: {2}', [matchCount, pendingSync]);
+
+// Son maçta kaç puan alındı? (hangi maçtan geldiği de görünsün)
+var lastMatch:Dynamic = backend.MatchRecords.lastMatch();
+if(lastMatch != null && lastMatch.points != null && Std.int(lastMatch.points) > 0)
+{
+newText += "\n" + Language.getPhrase('match_last_points', 'Son maç: +{1} ({2})', [Std.int(lastMatch.points), Std.string(lastMatch.song)]);
+}
 if(newText == lastLoginIndicatorText) return; // her frame'de gereksiz güncelleme yapma
 lastLoginIndicatorText = newText;
 

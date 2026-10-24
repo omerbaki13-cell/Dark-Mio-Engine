@@ -71,11 +71,18 @@ class MatchRecords
 
 	static function timerMs():Float
 	{
-		#if js
-		return 0;
-		#else
-		try return openfl.Lib.getTimer(); catch(e:Dynamic) return 0;
+		var t:Float = 0;
+		#if !js
+		try
+		{
+			t = openfl.Lib.getTimer();
+		}
+		catch(e:Dynamic)
+		{
+			t = 0;
+		}
 		#end
+		return t;
 	}
 
 	// ------------------------------------------------------------------
@@ -285,10 +292,23 @@ class MatchRecords
 			return 'SUPABASE: AYAR YOK - ' + (configError != null ? configError : '?');
 
 		var text:String = 'SUPABASE: ' + SUPABASE_URL + ' / ' + SUPABASE_TABLE;
+		if(configPath != null && configPath.length > 0)
+		{
+			// Uzun yolu kısalt: son 2 parça yeter (hangi dosya okundu?)
+			var parts:Array<String> = configPath.split('/');
+			var tail:String = parts[parts.length - 1];
+			if(parts.length > 1) tail = parts[parts.length - 2] + '/' + tail;
+			text += ' | dosya: ' + tail;
+		}
 		if(lastSyncStatus != 0)
 		{
 			text += ' | son: ' + lastSyncStatus;
-			if(lastSyncError != null && lastSyncError.length > 0) text += ' (' + lastSyncError + ')';
+			if(lastSyncError != null && lastSyncError.length > 0)
+			{
+				var err:String = lastSyncError;
+				if(err.length > 40) err = err.substr(0, 38) + '..';
+				text += ' (' + err + ')';
+			}
 		}
 		return text;
 	}
@@ -386,12 +406,14 @@ class MatchRecords
 		}
 		if(!replaced) _matches.push(record);
 
-		// Kuyruğa ekle
-		var alreadyQueued:Bool = false;
-		for(rec in _pending)
-			if(rec != null && rec.match_id == record.match_id) alreadyQueued = true;
+		// Kuyruğa ekle (varsa güncel kayıtla değiştir, mükerrer olmasın)
+		var queueIndex:Int = -1;
+		for (i in 0..._pending.length)
+			if(_pending[i] != null && _pending[i].match_id == record.match_id) queueIndex = i;
 
-		if(!alreadyQueued)
+		if(queueIndex >= 0)
+			_pending[queueIndex] = record;
+		else
 		{
 			_pending.push(record);
 			while(_pending.length > MAX_PENDING) _pending.shift();
@@ -580,9 +602,9 @@ class MatchRecords
 		http.setHeader('Prefer', 'resolution=merge-duplicates,return=minimal');
 		http.setPostData(body);
 
-		http.onStatus = function(st:Int) statusCode = st;
-		http.onData = function(d:String) responseBody = d;
-		http.onError = function(e:String) errorMsg = e;
+		http.onStatus = function(st:Int) { statusCode = st; };
+		http.onData = function(d:String) { responseBody = d; };
+		http.onError = function(e:String) { errorMsg = e; };
 
 		try
 		{
@@ -721,12 +743,46 @@ class MatchRecords
 		return _matches;
 	}
 
+	/** En son oynanan maç (played_at'e göre) */
+	public static function lastMatch():Dynamic
+	{
+		ensure();
+		var best:Dynamic = null;
+		for(m in _matches)
+		{
+			if(m == null || m.played_at == null) continue;
+			if(best == null || Std.string(m.played_at) >= Std.string(best.played_at)) best = m;
+		}
+		return best;
+	}
+
 	public static function getMatch(matchId:String):Dynamic
 	{
 		ensure();
 		for(m in _matches)
 			if(m != null && m.match_id == matchId) return m;
 		return null;
+	}
+
+	/**
+	 * Sadece "puan alındı" işaretlerini temizler (maç kayıtları kalır).
+	 * Test ederken aynı şarkıdan tekrar puan alabilmek için kullanılır.
+	 */
+	public static function resetClaimed():Int
+	{
+		ensure();
+		var count:Int = _claimed.length;
+		_claimed = [];
+		flush();
+		writeRenderFile();
+		return count;
+	}
+
+	/** Puan hakkı verilmiş maç sayısı */
+	public static function claimedCount():Int
+	{
+		ensure();
+		return _claimed.length;
 	}
 
 	/** Test / sıfırlama için */
