@@ -165,7 +165,23 @@ curl -X DELETE https://SUNUCU/users/1 -H "X-Admin-Key: $ADMIN_KEY"
 
 ---
 
-## 5. Web panelleri
+## 5. Oyun istemcisiyle bağlantı
+
+Oyunun kullandığı adres **tek bir yerde** durur:
+
+```
+source/states/LoginState.hx  ->  public static var SERVER_URL:String = "https://dark-mio-engine.onrender.com";
+```
+
+- `/login` ve `/register` çağrıları bu adrese gider.
+- `PlayState.finishMatchRecord()` maç sonu puanını
+  `SERVER_URL + '/score'` adresine `{user_id, score, song_name, points, match_id}`
+  gövdesiyle yollar (adres oradan okunur, ikinci kez yazılmaz).
+- Sunucu adresi değişirse **sadece bu satırı** güncelle.
+
+CORS açık olduğu için tarayıcı tabanlı (HTML5) derlemede de sorunsuz çalışır.
+
+## 6. Web panelleri
 
 ### Liderlik tablosu — `web/leaderboard.html`
 
@@ -190,7 +206,7 @@ Paneller tek dosyadır; gerekirse olduğu gibi başka bir yere de kopyalanabilir
 
 ---
 
-## 6. Dosya yapısı
+## 7. Dosya yapısı
 
 ```
 server/server.js              # Express uygulaması, tüm rotalar
@@ -205,7 +221,7 @@ server/.env.example           # değişken şablonu
 
 Render'da **Root Directory** olarak `server` yazmayı unutma.
 
-## 7. Notlar
+## 8. Notlar
 
 - CORS tamamen açıktır: oyun istemcisi (Flixel/Haxe) doğrudan çağırabilir.
 - Gövde limiti 64 KB, yönetim rotalarında dakikada 20 istek sınırı vardır.

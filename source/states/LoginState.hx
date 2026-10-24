@@ -11,7 +11,9 @@ import flixel.FlxObject;
 
 class LoginState extends MusicBeatState
 {
-static var SERVER_URL:String = "https://psych-nm.onrender.com";
+// Hesap sunucusu (puan / liderlik / yonetim). PlayState'teki skor gonderimi de
+// bu adresi kullanir; tek yerden degistirmek icin public.
+public static var SERVER_URL:String = "https://dark-mio-engine.onrender.com";
 
 var usernameInput:TextField;
 var passwordInput:TextField;
