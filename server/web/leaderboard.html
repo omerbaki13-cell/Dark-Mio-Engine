@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Liderlik Tablosu · Dark Mio Engine</title>
+<style>
+  :root{
+    --bg:#140d20; --card:#1e142d; --card2:#241a36; --line:#3a2a55;
+    --accent:#7850c8; --accent2:#9b6dff; --gold:#ffd34d; --silver:#cfd6e6; --bronze:#d9945b;
+    --text:#f2ecff; --muted:#a99cc4; --danger:#ff6b6b; --ok:#5fe08a;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(1100px 520px at 50% -180px, rgba(120,80,200,.35), transparent 70%),
+      radial-gradient(600px 400px at 110% 20%, rgba(255,211,77,.08), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family: var(--mono);
+    min-height:100vh;
+    padding:18px 14px 48px;
+  }
+  .wrap{max-width:920px;margin:0 auto}
+  header.top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .logo{
+    width:38px;height:38px;border-radius:11px;flex:0 0 auto;
+    background:linear-gradient(145deg,var(--accent2),var(--accent));
+    display:grid;place-items:center;font-weight:800;font-size:18px;color:#fff;
+    box-shadow:0 6px 18px rgba(120,80,200,.45);
+  }
+  .brand h1{font-size:18px;margin:0;letter-spacing:.5px}
+  .brand p{margin:2px 0 0;font-size:11px;color:var(--muted);letter-spacing:.4px}
+  .live{
+    display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);
+    background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:7px 12px;
+  }
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 10px var(--ok);animation:pulse 2.4s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .controls{
+    display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;
+    background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;
+  }
+  .search{position:relative;flex:1 1 180px;min-width:150px}
+  .search input{
+    width:100%;background:#120b1d;border:1px solid var(--line);border-radius:9px;
+    color:var(--text);font-family:var(--mono);font-size:13px;padding:10px 12px 10px 32px;outline:none;
+  }
+  .search input:focus{border-color:var(--accent2);box-shadow:0 0 0 3px rgba(155,109,255,.18)}
+  .search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);opacity:.5}
+  select,button{font-family:var(--mono)}
+  select{
+    background:#120b1d;border:1px solid var(--line);color:var(--text);border-radius:9px;
+    padding:10px 12px;font-size:13px;outline:none;cursor:pointer;
+  }
+  button{
+    background:linear-gradient(145deg,var(--accent2),var(--accent));border:0;color:#fff;
+    border-radius:9px;padding:10px 16px;font-size:13px;font-weight:700;cursor:pointer;
+    transition:filter .15s, transform .1s;
+  }
+  button:hover{filter:brightness(1.1)}
+  button:active{transform:scale(.98)}
+  button.ghost{background:#120b1d;border:1px solid var(--line);color:var(--text);font-weight:600}
+  button[disabled]{opacity:.5;cursor:not-allowed}
+
+  /* podyum */
+  .podium{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+  .p-card{
+    background:linear-gradient(180deg,var(--card2),var(--card));
+    border:1px solid var(--line);border-radius:14px;padding:14px 10px;text-align:center;position:relative;overflow:hidden;
+  }
+  .p-card::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:var(--accent)}
+  .p-card.gold{border-color:rgba(255,211,77,.55)}
+  .p-card.gold::before{background:var(--gold)}
+  .p-card.silver{border-color:rgba(207,214,230,.45)}
+  .p-card.silver::before{background:var(--silver)}
+  .p-card.bronze{border-color:rgba(217,148,91,.5)}
+  .p-card.bronze::before{background:var(--bronze)}
+  .p-card.one{transform:translateY(-6px)}
+  .medal{font-size:22px;line-height:1}
+  .p-name{margin-top:6px;font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .p-pts{font-size:19px;font-weight:800;color:var(--gold);margin-top:4px}
+  .p-pts small{font-size:10px;color:var(--muted);font-weight:600;display:block;letter-spacing:.5px}
+
+  /* tablo */
+  .table-card{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+  .thead,.row{display:grid;grid-template-columns:52px 1fr 84px 74px 92px;align-items:center;gap:8px;padding:11px 14px}
+  .thead{font-size:10.5px;letter-spacing:1px;color:var(--muted);background:#191024;border-bottom:1px solid var(--line)}
+  .row{border-bottom:1px solid rgba(58,42,85,.55);font-size:13px;transition:background .15s}
+  .row:last-child{border-bottom:0}
+  .row:hover{background:rgba(155,109,255,.07)}
+  .row.me{background:rgba(255,211,77,.08);box-shadow:inset 3px 0 0 var(--gold)}
+  .rank{font-weight:800;color:var(--muted)}
+  .row:nth-child(2) .rank{color:var(--gold)}
+  .row:nth-child(3) .rank{color:var(--silver)}
+  .row:nth-child(4) .rank{color:var(--bronze)}
+  .uname{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pts{color:var(--gold);font-weight:800;text-align:right}
+  .num{text-align:right;color:var(--muted);font-size:12px}
+
+  .skeleton{height:44px;margin:10px 14px;border-radius:8px;background:linear-gradient(90deg,#241a36,#2e2244,#241a36);background-size:200% 100%;animation:sh 1.2s infinite}
+  @keyframes sh{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+  .empty,.error{padding:34px 18px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6}
+  .error{color:var(--danger)}
+  .error code{display:block;margin-top:8px;font-size:11px;color:var(--muted);word-break:break-all}
+  footer{text-align:center;color:var(--muted);font-size:11px;margin-top:20px;line-height:1.7}
+  footer a{color:var(--accent2);text-decoration:none}
+
+  @media (max-width:560px){
+    .thead,.row{grid-template-columns:42px 1fr 62px 62px;gap:6px;padding:10px}
+    .col-best{display:none}
+    .podium{gap:6px}
+    .p-card{padding:11px 6px}
+    .p-pts{font-size:16px}
+    .p-name{font-size:11px}
+    .medal{font-size:18px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">M</div>
+      <div>
+        <h1>LİDERLİK TABLOSU</h1>
+        <p id="serverLabel">Dark Mio Engine · toplam puan sıralaması</p>
+      </div>
+    </div>
+    <div class="live"><span class="dot"></span><span id="updated">yükleniyor…</span></div>
+  </header>
+
+  <div class="controls">
+    <div class="search">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a99cc4" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="filter" type="search" placeholder="Oyuncu ara…" autocomplete="off" />
+    </div>
+    <select id="limit" title="Kaç oyuncu gösterilsin">
+      <option value="10">İlk 10</option>
+      <option value="25" selected>İlk 25</option>
+      <option value="50">İlk 50</option>
+      <option value="100">İlk 100</option>
+    </select>
+    <button id="refresh" class="ghost">Yenile</button>
+  </div>
+
+  <div class="podium" id="podium"></div>
+
+  <div class="table-card">
+    <div class="thead">
+      <span>#</span><span>OYUNCU</span><span style="text-align:right">PUAN</span>
+      <span class="num" style="text-align:right">ŞARKI</span><span class="col-best" style="text-align:right">EN İYİ</span>
+    </div>
+    <div id="rows"></div>
+  </div>
+
+  <footer>
+    <div id="autoNote">30 saniyede bir otomatik yenilenir</div>
+    <div>Dark Mio Engine · <a href="./admin.html">yönetim paneli</a></div>
+  </footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const params = new URLSearchParams(location.search);
+  const MOCK = params.get('mock') === '1';
+  const HIGHLIGHT = (params.get('user') || '').toLowerCase();
+
+  const el = {
+    podium: document.getElementById('podium'),
+    rows: document.getElementById('rows'),
+    updated: document.getElementById('updated'),
+    filter: document.getElementById('filter'),
+    limit: document.getElementById('limit'),
+    refresh: document.getElementById('refresh'),
+    serverLabel: document.getElementById('serverLabel'),
+    autoNote: document.getElementById('autoNote'),
+  };
+
+  let allRows = [];
+  let lastUpdated = null;
+  let loading = false;
+
+  function serverBase() {
+    const fromQuery = params.get('server');
+    if (fromQuery) return fromQuery.replace(/\/+$/, '');
+    const saved = localStorage.getItem('des_server');
+    if (saved) return saved.replace(/\/+$/, '');
+    if (location.protocol.startsWith('http')) return location.origin;
+    return 'https://psych-nm.onrender.com';
+  }
+
+  async function api(path, timeoutMs) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs || 90000);
+    try {
+      const res = await fetch(serverBase() + path, { signal: controller.signal, headers: { Accept: 'application/json' } });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch (_) { data = null; }
+      if (!res.ok) {
+        const msg = (data && (data.error || data.message)) || ('HTTP ' + res.status);
+        const err = new Error(msg);
+        err.status = res.status;
+        throw err;
+      }
+      return data;
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        const err = new Error('Sunucu 90 saniyede yanıt vermedi');
+        err.timeout = true;
+        throw err;
+      }
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  function mockRows() {
+    const names = ['baki', 'mio', 'player1', 'shadow', 'test', 'mert', 'zeynep', 'kaan', 'elif', 'deniz', 'arda', 'selin'];
+    return names.map((n, i) => ({
+      rank: i + 1,
+      user_id: i + 1,
+      username: n,
+      points: Math.max(0, 120 - i * 9 - (i % 3)),
+      songs_played: Math.max(1, 30 - i * 2),
+      best_score: Math.max(0, 980 - i * 40),
+    }));
+  }
+
+  function setStatus(text, isError) {
+    el.updated.textContent = text;
+    el.updated.style.color = isError ? 'var(--danger)' : 'var(--muted)';
+  }
+
+  function fmtTime(d) {
+    return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  function skeleton() {
+    el.rows.innerHTML = Array.from({ length: 6 }).map(() => '<div class="skeleton"></div>').join('');
+    el.podium.innerHTML = '';
+  }
+
+  function render() {
+    const needle = el.filter.value.trim().toLowerCase();
+    const rows = needle ? allRows.filter(r => String(r.username).toLowerCase().includes(needle)) : allRows;
+
+    // podyum: filtre yokken ilk 3
+    const top3 = needle ? [] : allRows.slice(0, 3);
+    const medals = ['🥇', '🥈', '🥉'];
+    const cls = ['gold one', 'silver', 'bronze'];
+    el.podium.innerHTML = top3.map((r, i) => `
+      <div class="p-card ${cls[i]}">
+        <div class="medal">${medals[i]}</div>
+        <div class="p-name" title="${escapeHtml(r.username)}">${escapeHtml(r.username)}</div>
+        <div class="p-pts">${r.points}<small>PUAN</small></div>
+      </div>`).join('');
+
+    if (!rows.length) {
+      el.rows.innerHTML = '<div class="empty">' +
+        (needle ? 'Bu isimde oyuncu yok.' : 'Henüz kimse puan kazanmamış. İlk sen ol!') + '</div>';
+      return;
+    }
+
+    el.rows.innerHTML = rows.map(r => {
+      const mine = HIGHLIGHT && String(r.username).toLowerCase() === HIGHLIGHT;
+      return `
+        <div class="row${mine ? ' me' : ''}">
+          <span class="rank">${r.rank}</span>
+          <span class="uname">${escapeHtml(r.username)}${mine ? ' <span style="color:var(--gold);font-size:10px">(sen)</span>' : ''}</span>
+          <span class="pts">${r.points}</span>
+          <span class="num">${r.songs_played || 0}</span>
+          <span class="num col-best">${r.best_score || 0}</span>
+        </div>`;
+    }).join('');
+  }
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function showError(message, err) {
+    el.podium.innerHTML = '';
+    el.rows.innerHTML = `
+      <div class="error">
+        Veri alınamadı.<br>${escapeHtml(message)}
+        <code>${escapeHtml(serverBase())}${err && err.status ? ' · HTTP ' + err.status : ''}</code>
+        <div style="margin-top:14px"><button id="retry">Tekrar dene</button></div>
+      </div>`;
+    const retry = document.getElementById('retry');
+    if (retry) retry.onclick = () => load();
+    setStatus('bağlantı hatası', true);
+  }
+
+  async function load() {
+    if (loading) return;
+    loading = true;
+    el.refresh.disabled = true;
+    skeleton();
+    setStatus('yükleniyor…', false);
+
+    try {
+      let rows;
+      if (MOCK) {
+        await new Promise(r => setTimeout(r, 350));
+        rows = mockRows().slice(0, Number(el.limit.value));
+      } else {
+        const data = await api('/leaderboard?limit=' + encodeURIComponent(el.limit.value));
+        rows = (data && data.leaderboard) || [];
+        rows = rows.map((r, i) => ({
+          rank: r.rank || i + 1,
+          user_id: r.user_id,
+          username: r.username || (r.users && r.users.username) || 'bilinmeyen',
+          points: Number(r.points || 0),
+          songs_played: Number(r.songs_played || 0),
+          best_score: Number(r.best_score || 0),
+        }));
+      }
+
+      allRows = rows;
+      lastUpdated = new Date();
+      render();
+      setStatus((MOCK ? 'demo verisi · ' : '') + 'son güncelleme ' + fmtTime(lastUpdated), false);
+      el.serverLabel.textContent = MOCK
+        ? 'Dark Mio Engine · DEMO MODU (?mock=1)'
+        : 'Dark Mio Engine · ' + serverBase().replace(/^https?:\/\//, '');
+    } catch (e) {
+      const extra = e.timeout ? ' (Render uyanıyor olabilir, 30-60 sn sürer)' : '';
+      showError(e.message + extra, e);
+    } finally {
+      loading = false;
+      el.refresh.disabled = false;
+    }
+  }
+
+  el.refresh.onclick = () => load();
+  el.limit.onchange = () => load();
+  el.filter.oninput = () => render();
+
+  load();
+  if (!MOCK) setInterval(() => { if (!document.hidden) load(); }, 30000);
+  else el.autoNote.textContent = 'Demo modu: örnek veriler gösteriliyor';
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && !MOCK && lastUpdated && Date.now() - lastUpdated.getTime() > 30000) load();
+  });
+})();
+</script>
+</body>
+</html>
