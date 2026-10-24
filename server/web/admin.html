@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Yönetim Paneli · Dark Mio Engine</title>
+<style>
+  :root{
+    --bg:#140d20; --card:#1e142d; --card2:#241a36; --line:#3a2a55;
+    --accent:#7850c8; --accent2:#9b6dff; --gold:#ffd34d;
+    --text:#f2ecff; --muted:#a99cc4; --danger:#ff6b6b; --ok:#5fe08a;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0;min-height:100vh;color:var(--text);font-family:var(--mono);padding:16px 12px 60px;
+    background:
+      radial-gradient(900px 460px at 50% -200px, rgba(120,80,200,.35), transparent 70%),
+      var(--bg);
+  }
+  .wrap{max-width:1020px;margin:0 auto}
+  h1,h2,h3{margin:0}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+  .brand{display:flex;align-items:center;gap:10px}
+  .logo{width:38px;height:38px;border-radius:11px;background:linear-gradient(145deg,var(--accent2),var(--accent));
+    display:grid;place-items:center;font-weight:800;box-shadow:0 6px 18px rgba(120,80,200,.45)}
+  .brand h1{font-size:17px}
+  .brand p{margin:2px 0 0;font-size:11px;color:var(--muted)}
+  .pill{display:inline-flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);
+    background:rgba(255,255,255,.04);border:1px solid var(--line);border-radius:999px;padding:7px 12px;white-space:nowrap}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+  .dot.on{background:var(--ok);box-shadow:0 0 10px var(--ok)}
+  .dot.off{background:var(--danger);box-shadow:0 0 10px var(--danger)}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+  label{display:block;font-size:10.5px;letter-spacing:1px;color:var(--muted);margin-bottom:6px}
+  input,select,textarea{
+    width:100%;background:#120b1d;border:1px solid var(--line);border-radius:9px;color:var(--text);
+    font-family:var(--mono);font-size:13px;padding:11px 12px;outline:none;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--accent2);box-shadow:0 0 0 3px rgba(155,109,255,.18)}
+  input::placeholder{color:#6b5f86}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .row3{display:grid;grid-template-columns:1.4fr 1fr auto;gap:10px;align-items:end}
+  @media (max-width:640px){.row2,.row3{grid-template-columns:1fr}}
+
+  button{font-family:var(--mono);border:0;border-radius:9px;padding:11px 16px;font-size:13px;font-weight:700;
+    color:#fff;background:linear-gradient(145deg,var(--accent2),var(--accent));cursor:pointer;transition:filter .15s,transform .1s}
+  button:hover{filter:brightness(1.1)}
+  button:active{transform:scale(.98)}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  button.ghost{background:#120b1d;border:1px solid var(--line);color:var(--text);font-weight:600}
+  button.gold{background:linear-gradient(145deg,#ffdf7a,#e8b51f);color:#2a1c00}
+  button.danger{background:linear-gradient(145deg,#ff8a8a,#d93e3e)}
+  button.sm{padding:8px 12px;font-size:12px}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .quick button{padding:8px 12px;font-size:12px}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  @media (max-width:560px){.stats{grid-template-columns:1fr 1fr}}
+  .stat{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:12px;padding:12px}
+  .stat .k{font-size:10px;letter-spacing:1px;color:var(--muted)}
+  .stat .v{font-size:20px;font-weight:800;margin-top:4px;color:var(--gold);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .tabs{display:flex;gap:6px;margin-bottom:12px}
+  .tab{flex:1;text-align:center;padding:10px;border-radius:10px;font-size:12px;font-weight:700;color:var(--muted);
+    background:#191024;border:1px solid var(--line);cursor:pointer}
+  .tab.active{color:#fff;background:linear-gradient(145deg,var(--accent2),var(--accent));border-color:transparent}
+
+  .user-list{max-height:330px;overflow:auto;border:1px solid var(--line);border-radius:11px}
+  .u-item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 12px;cursor:pointer;
+    border-bottom:1px solid rgba(58,42,85,.6);font-size:13px}
+  .u-item:last-child{border-bottom:0}
+  .u-item:hover{background:rgba(155,109,255,.08)}
+  .u-item.active{background:rgba(155,109,255,.16);box-shadow:inset 3px 0 0 var(--accent2)}
+  .u-item .nm{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .u-item .pt{color:var(--gold);font-weight:800;white-space:nowrap}
+  .u-item .id{font-size:10.5px;color:var(--muted)}
+
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media (max-width:760px){.detail-grid{grid-template-columns:1fr}}
+  .kv{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px dashed rgba(58,42,85,.7);font-size:12.5px}
+  .kv:last-child{border-bottom:0}
+  .kv span:first-child{color:var(--muted)}
+  .kv span:last-child{font-weight:700}
+
+  .big-points{font-size:34px;font-weight:800;color:var(--gold);line-height:1}
+  .muted{color:var(--muted);font-size:11.5px;line-height:1.6}
+
+  .danger-box{border:1px solid rgba(255,107,107,.4);background:rgba(255,107,107,.06);border-radius:11px;padding:12px;margin-top:14px}
+  .danger-box h3{font-size:12.5px;color:var(--danger);margin-bottom:8px;letter-spacing:.5px}
+
+  .log-item{padding:10px 0;border-bottom:1px dashed rgba(58,42,85,.7);font-size:12px;line-height:1.5}
+  .log-item:last-child{border-bottom:0}
+  .log-item .t{color:var(--muted);font-size:10.5px}
+  .tag{display:inline-block;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:800;letter-spacing:.5px;margin-right:6px}
+  .tag.add{background:rgba(95,224,138,.15);color:var(--ok)}
+  .tag.remove{background:rgba(255,107,107,.15);color:var(--danger)}
+  .tag.del{background:rgba(255,107,107,.2);color:#ffb3b3}
+
+  .toasts{position:fixed;left:50%;transform:translateX(-50%);bottom:18px;display:flex;flex-direction:column;gap:8px;z-index:99;width:min(92vw,420px)}
+  .toast{background:#241a36;border:1px solid var(--line);border-left:4px solid var(--accent2);border-radius:10px;
+    padding:12px 14px;font-size:12.5px;box-shadow:0 12px 30px rgba(0,0,0,.45);animation:in .2s ease-out}
+  .toast.ok{border-left-color:var(--ok)}
+  .toast.err{border-left-color:var(--danger)}
+  @keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+  .overlay{position:fixed;inset:0;background:rgba(10,6,18,.72);backdrop-filter:blur(3px);display:grid;place-items:center;padding:16px;z-index:80}
+  .overlay[hidden]{display:none}
+  .modal{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;max-width:420px;width:100%}
+  .modal h3{font-size:15px;margin-bottom:8px}
+  .modal p{font-size:12.5px;color:var(--muted);line-height:1.6}
+
+  .gate{max-width:520px;margin:8vh auto 0}
+  .gate .card{padding:20px}
+  .gate h2{font-size:16px;margin-bottom:6px}
+  .hint{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.7}
+  .hint code{background:#120b1d;padding:2px 6px;border-radius:5px;color:var(--accent2)}
+  [hidden]{display:none !important}
+  a{color:var(--accent2);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <div class="brand">
+      <div class="logo">M</div>
+      <div>
+        <h1>YÖNETİM PANELİ</h1>
+        <p id="serverLabel">Dark Mio Engine · hesap yönetimi</p>
+      </div>
+    </div>
+    <div class="pill"><span class="dot" id="dot"></span><span id="statusText">bağlı değil</span></div>
+  </div>
+
+  <!-- GİRİŞ EKRANI -->
+  <div id="gate" class="gate">
+    <div class="card">
+      <h2>Sunucuya bağlan</h2>
+      <p class="muted">Yönetim anahtarı (ADMIN_KEY) sunucuda tanımlı olmalı. Anahtar bu cihazda saklanır, hiçbir yere gönderilmez.</p>
+      <div style="margin-top:14px">
+        <label>SUNUCU ADRESİ</label>
+        <input id="gateServer" placeholder="https://dark-engine-service.onrender.com" autocomplete="off" spellcheck="false" />
+      </div>
+      <div style="margin-top:12px">
+        <label>YÖNETİM ANAHTARI</label>
+        <input id="gateKey" type="password" placeholder="ADMIN_KEY" autocomplete="off" spellcheck="false" />
+      </div>
+      <div class="btn-row">
+        <button id="gateConnect">Bağlan</button>
+        <button id="gateMock" class="ghost">Demo modu</button>
+      </div>
+      <div class="hint" id="gateHint"></div>
+    </div>
+    <p class="muted" style="text-align:center;margin-top:14px"><a href="./leaderboard.html">← Liderlik tablosuna dön</a></p>
+  </div>
+
+  <!-- PANEL -->
+  <div id="panel" hidden>
+    <div class="stats">
+      <div class="stat"><div class="k">KULLANICI</div><div class="v" id="statUsers">—</div></div>
+      <div class="stat"><div class="k">TOPLAM PUAN</div><div class="v" id="statPoints">—</div></div>
+      <div class="stat"><div class="k">ZİRVEDEKİ</div><div class="v" id="statTop">—</div></div>
+    </div>
+
+    <div class="tabs">
+      <div class="tab active" data-tab="users">KULLANICILAR</div>
+      <div class="tab" data-tab="logs">İŞLEM GEÇMİŞİ</div>
+    </div>
+
+    <!-- KULLANICILAR -->
+    <section id="tab-users">
+      <div class="card">
+        <div class="row3">
+          <div>
+            <label>KULLANICI ARA</label>
+            <input id="search" placeholder="isim yaz…" autocomplete="off" />
+          </div>
+          <div>
+            <label>LİSTE BOYUTU</label>
+            <select id="limit">
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+          <button id="reload" class="ghost">Yenile</button>
+        </div>
+        <div class="user-list" id="userList" style="margin-top:12px"></div>
+        <div class="muted" id="listNote" style="margin-top:8px"></div>
+      </div>
+
+      <div id="detail" hidden>
+        <div class="detail-grid">
+          <!-- puan -->
+          <div class="card">
+            <h2 id="dName" style="font-size:15px">—</h2>
+            <div class="muted" id="dMeta">—</div>
+            <div style="margin:14px 0 4px" class="big-points" id="dPoints">0</div>
+            <div class="muted" style="margin-bottom:12px">TOPLAM PUAN</div>
+
+            <label>PUAN MİKTARI</label>
+            <input id="amount" type="number" min="1" step="1" value="5" inputmode="numeric" />
+            <div class="quick">
+              <button class="sm gold" data-quick="1">+1</button>
+              <button class="sm gold" data-quick="5">+5</button>
+              <button class="sm gold" data-quick="10">+10</button>
+              <button class="sm gold" data-quick="50">+50</button>
+              <button class="sm ghost" data-quick="-1">-1</button>
+              <button class="sm ghost" data-quick="-5">-5</button>
+            </div>
+            <div style="margin-top:12px">
+              <label>SEBEP (isteğe bağlı)</label>
+              <input id="reason" placeholder="örn. etkinlik ödülü" maxlength="200" />
+            </div>
+            <div class="btn-row">
+              <button id="giveBtn">Puan Ver</button>
+              <button id="takeBtn" class="ghost">Puan Düşür</button>
+            </div>
+          </div>
+
+          <!-- bilgi + silme -->
+          <div class="card">
+            <h2 style="font-size:15px">Hesap bilgisi</h2>
+            <div style="margin-top:10px">
+              <div class="kv"><span>Kullanıcı ID</span><span id="iId">—</span></div>
+              <div class="kv"><span>Kullanıcı adı</span><span id="iName">—</span></div>
+              <div class="kv"><span>Puan</span><span id="iPoints">—</span></div>
+              <div class="kv"><span>Oynanan şarkı</span><span id="iSongs">—</span></div>
+              <div class="kv"><span>En iyi skor</span><span id="iBest">—</span></div>
+              <div class="kv"><span>Kayıt tarihi</span><span id="iCreated">—</span></div>
+            </div>
+
+            <div class="danger-box">
+              <h3>HESABI SİL</h3>
+              <p class="muted" style="margin:0 0 8px">Bu işlem geri alınamaz. Kullanıcının skorları da silinir.</p>
+              <label>ONAYLAMAK İÇİN KULLANICI ADINI YAZ</label>
+              <input id="deleteConfirm" placeholder="kullanıcı adı" autocomplete="off" />
+              <div class="btn-row"><button id="deleteBtn" class="danger" disabled>Hesabı Sil</button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- LOGLAR -->
+    <section id="tab-logs" hidden>
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+          <h2 style="font-size:15px">Sunucu işlem geçmişi</h2>
+          <button id="reloadLogs" class="ghost sm">Yenile</button>
+        </div>
+        <div id="serverLogs" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <h2 style="font-size:15px">Bu cihazdaki işlemler</h2>
+        <div class="muted" style="margin-bottom:8px">Son 100 işlem, tarayıcıda saklanır.</div>
+        <div id="localLogs"></div>
+        <div class="btn-row"><button id="clearLocal" class="ghost sm">Yerel kaydı temizle</button></div>
+      </div>
+    </section>
+
+    <p class="muted" style="text-align:center;margin-top:18px">
+      <a href="./leaderboard.html">Liderlik tablosu</a> ·
+      <a href="#" id="disconnect">Bağlantıyı kes</a>
+    </p>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+
+<!-- SİLME ONAY MODALI -->
+<div class="overlay" id="deleteModal" hidden>
+  <div class="modal">
+    <h3>Hesabı sil?</h3>
+    <p id="deleteModalText">—</p>
+    <div class="btn-row" style="margin-top:16px">
+      <button class="danger" id="deleteConfirmBtn">Evet, sil</button>
+      <button class="ghost" id="deleteCancelBtn">Vazgeç</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  const params = new URLSearchParams(location.search);
+  const LS = {
+    server: 'des_server',
+    key: 'des_admin_key',
+    logs: 'des_local_logs',
+  };
+
+  const defaultServer = (function () {
+    const q = params.get('server');
+    if (q) return q.replace(/\/+$/, '');
+    const saved = localStorage.getItem(LS.server);
+    if (saved) return saved.replace(/\/+$/, '');
+    if (location.protocol.startsWith('http')) return location.origin;
+    return 'https://dark-engine-service.onrender.com';
+  })();
+
+  const state = {
+    base: defaultServer,
+    key: localStorage.getItem(LS.key) || '',
+    mock: false,
+    users: [],
+    selected: null,
+    connected: false,
+    searchTimer: null,
+    pendingDelete: null,
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const el = {
+    gate: $('gate'), panel: $('panel'),
+    gateServer: $('gateServer'), gateKey: $('gateKey'), gateConnect: $('gateConnect'), gateMock: $('gateMock'), gateHint: $('gateHint'),
+    dot: $('dot'), statusText: $('statusText'), serverLabel: $('serverLabel'),
+    statUsers: $('statUsers'), statPoints: $('statPoints'), statTop: $('statTop'),
+    search: $('search'), limit: $('limit'), reload: $('reload'), userList: $('userList'), listNote: $('listNote'),
+    detail: $('detail'), dName: $('dName'), dMeta: $('dMeta'), dPoints: $('dPoints'),
+    amount: $('amount'), reason: $('reason'), giveBtn: $('giveBtn'), takeBtn: $('takeBtn'),
+    iId: $('iId'), iName: $('iName'), iPoints: $('iPoints'), iSongs: $('iSongs'), iBest: $('iBest'), iCreated: $('iCreated'),
+    deleteConfirm: $('deleteConfirm'), deleteBtn: $('deleteBtn'),
+    serverLogs: $('serverLogs'), localLogs: $('localLogs'), reloadLogs: $('reloadLogs'), clearLocal: $('clearLocal'),
+    toasts: $('toasts'),
+    deleteModal: $('deleteModal'), deleteModalText: $('deleteModalText'),
+    deleteConfirmBtn: $('deleteConfirmBtn'), deleteCancelBtn: $('deleteCancelBtn'),
+  };
+
+  /* ----------------------------- yardımcılar ----------------------------- */
+
+  function escapeHtml(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function toast(message, type) {
+    const div = document.createElement('div');
+    div.className = 'toast ' + (type || '');
+    div.textContent = message;
+    el.toasts.appendChild(div);
+    setTimeout(() => { div.style.opacity = '0'; div.style.transition = 'opacity .25s'; }, 3200);
+    setTimeout(() => div.remove(), 3600);
+  }
+
+  function setStatus(text, kind) {
+    el.statusText.textContent = text;
+    el.dot.className = 'dot ' + (kind || '');
+  }
+
+  function fmtDate(value) {
+    if (!value) return '—';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return String(value);
+    return d.toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function fmtTimeShort(value) {
+    if (!value) return '';
+    const d = new Date(value);
+    if (isNaN(d.getTime())) return String(value);
+    return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  }
+
+  async function api(path, options) {
+    const opts = options || {};
+    if (state.mock) return mockApi(path, opts);
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 90000);
+    const headers = { Accept: 'application/json' };
+    if (opts.body) headers['Content-Type'] = 'application/json';
+    if (state.key) headers['X-Admin-Key'] = state.key;
+
+    try {
+      const res = await fetch(state.base + path, {
+        method: opts.method || 'GET',
+        headers,
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+        signal: controller.signal,
+      });
+      const text = await res.text();
+      let data = null;
+      try { data = text ? JSON.parse(text) : null; } catch (_) { data = null; }
+
+      if (!res.ok) {
+        let msg = (data && (data.error || data.message)) || ('HTTP ' + res.status);
+        if (res.status === 401) msg = 'Yetkisiz: yönetim anahtarı hatalı (HTTP 401)';
+        if (res.status === 503) msg = 'Sunucuda ADMIN_KEY tanımlı değil (HTTP 503)';
+        if (res.status === 404) msg = msg + ' (HTTP 404 · endpoint yok)';
+        const err = new Error(msg);
+        err.status = res.status;
+        err.data = data;
+        throw err;
+      }
+      return data;
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        const err = new Error('Sunucu 90 saniyede yanıt vermedi (Render uyanıyor olabilir)');
+        err.timeout = true;
+        throw err;
+      }
+      throw e;
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /* ------------------------------ mock veri ------------------------------ */
+
+  const mockState = {
+    users: [
+      { user_id: 1, username: 'baki', points: 40, songs_played: 12, best_score: 980, created_at: '2026-09-01T10:00:00Z' },
+      { user_id: 2, username: 'mio', points: 25, songs_played: 8, best_score: 870, created_at: '2026-09-03T12:00:00Z' },
+      { user_id: 3, username: 'player1', points: 12, songs_played: 4, best_score: 640, created_at: '2026-09-10T09:30:00Z' },
+      { user_id: 4, username: 'test', points: 3, songs_played: 1, best_score: 120, created_at: '2026-09-12T18:20:00Z' },
+    ],
+    logs: [],
+  };
+
+  async function mockApi(path, opts) {
+    await new Promise((r) => setTimeout(r, 260));
+    const method = (opts && opts.method) || 'GET';
+    let m;
+
+    if (path.startsWith('/health')) return { status: 'ok', storage: 'demo', admin_enabled: true };
+
+    if (path.startsWith('/users?') && method === 'GET') {
+      const q = (new URLSearchParams(path.split('?')[1]).get('q') || '').toLowerCase();
+      return { users: mockState.users.filter((u) => !q || u.username.toLowerCase().includes(q)) };
+    }
+    if ((m = path.match(/^\/users\/(\d+)$/)) && method === 'GET') {
+      const u = mockState.users.find((x) => x.user_id === Number(m[1]));
+      return u ? { user: u } : Promise.reject(Object.assign(new Error('Kullanıcı bulunamadı'), { status: 404 }));
+    }
+    if ((m = path.match(/^\/users\/(\d+)$/)) && method === 'DELETE') {
+      mockState.users = mockState.users.filter((x) => x.user_id !== Number(m[1]));
+      mockState.logs.unshift({ action: 'delete_user', target_username: 'silinen', created_at: new Date().toISOString() });
+      return { success: true };
+    }
+    if (path === '/points' && method === 'POST') {
+      const b = opts.body || {};
+      const u = mockState.users.find((x) => x.user_id === Number(b.user_id));
+      if (!u) throw Object.assign(new Error('Kullanıcı bulunamadı'), { status: 404 });
+      u.points = Math.max(0, u.points + Number(b.amount || 0));
+      mockState.logs.unshift({
+        action: Number(b.amount) > 0 ? 'add_points' : 'remove_points',
+        target_username: u.username, amount: Number(b.amount), reason: b.reason || null,
+        created_at: new Date().toISOString(),
+      });
+      return { success: true, points: u.points, username: u.username };
+    }
+    if (path.startsWith('/admin/logs')) return { logs: mockState.logs.slice(0, 50) };
+    if (path.startsWith('/admin/summary')) {
+      const total = mockState.users.reduce((s, u) => s + u.points, 0);
+      return { success: true, users: mockState.users.length, total_points: total };
+    }
+    throw Object.assign(new Error('Demo modunda bu endpoint yok'), { status: 404 });
+  }
+
+  /* -------------------------------- giriş -------------------------------- */
+
+  function openPanel() {
+    el.gate.hidden = true;
+    el.panel.hidden = false;
+    el.serverLabel.textContent = state.mock
+      ? 'Dark Mio Engine · DEMO MODU (veriler sahte)'
+      : 'Dark Mio Engine · ' + state.base.replace(/^https?:\/\//, '');
+  }
+
+  async function connect(base, key) {
+    state.base = String(base || '').replace(/\/+$/, '');
+    state.key = String(key || '');
+    state.mock = false;
+
+    if (!state.base) { el.gateHint.textContent = 'Sunucu adresi gerekli.'; return; }
+    if (!state.key) { el.gateHint.textContent = 'Yönetim anahtarı gerekli.'; return; }
+
+    el.gateConnect.disabled = true;
+    el.gateConnect.textContent = 'Bağlanıyor…';
+    el.gateHint.textContent = 'Sunucu uyanıyor olabilir, 30-60 saniye sürebilir…';
+
+    try {
+      const health = await api('/health');
+      if (!health || !health.admin_enabled) {
+        throw new Error('Sunucuda ADMIN_KEY tanımlı değil. Render > Environment bölümüne ADMIN_KEY ekleyin.');
+      }
+      localStorage.setItem(LS.server, state.base);
+      localStorage.setItem(LS.key, state.key);
+      state.connected = true;
+      setStatus('bağlı · ' + (health.storage || '?'), 'on');
+      openPanel();
+      toast('Bağlantı kuruldu (' + (health.storage || '?') + ')', 'ok');
+      await Promise.all([loadSummary(), loadUsers(), loadLogs()]);
+    } catch (e) {
+      setStatus('bağlantı yok', 'off');
+      el.gateHint.textContent = 'Bağlanamadı: ' + e.message;
+      toast(e.message, 'err');
+    } finally {
+      el.gateConnect.disabled = false;
+      el.gateConnect.textContent = 'Bağlan';
+    }
+  }
+
+  el.gateConnect.onclick = () => connect(el.gateServer.value.trim() || defaultServer, el.gateKey.value.trim());
+  el.gateKey.addEventListener('keydown', (e) => { if (e.key === 'Enter') el.gateConnect.click(); });
+
+  el.gateMock.onclick = async () => {
+    state.mock = true;
+    state.connected = true;
+    setStatus('demo modu', 'on');
+    openPanel();
+    toast('Demo modu: veriler sadece bu sekmede', 'ok');
+    await Promise.all([loadSummary(), loadUsers(), loadLogs()]);
+  };
+
+  $('disconnect').onclick = (e) => {
+    e.preventDefault();
+    state.connected = false;
+    state.selected = null;
+    el.panel.hidden = true;
+    el.gate.hidden = false;
+    setStatus('bağlı değil', '');
+    el.gateHint.textContent = 'Bağlantı kesildi. Anahtar cihazda kayıtlı kaldı.';
+  };
+
+  /* ------------------------------- sekmeler ------------------------------ */
+
+  document.querySelectorAll('.tab').forEach((tab) => {
+    tab.onclick = () => {
+      document.querySelectorAll('.tab').forEach((t) => t.classList.remove('active'));
+      tab.classList.add('active');
+      const isUsers = tab.dataset.tab === 'users';
+      $('tab-users').hidden = !isUsers;
+      $('tab-logs').hidden = isUsers;
+      if (!isUsers) loadLogs();
+    };
+  });
+
+  /* ------------------------------- özet --------------------------------- */
+
+  async function loadSummary() {
+    try {
+      if (state.mock) {
+        el.statUsers.textContent = mockState.users.length;
+        el.statPoints.textContent = mockState.users.reduce((s, u) => s + u.points, 0);
+        const top = mockState.users.slice().sort((a, b) => b.points - a.points)[0];
+        el.statTop.textContent = top ? top.username : '—';
+        return;
+      }
+      const [summary, board] = await Promise.all([
+        api('/admin/summary'),
+        api('/leaderboard?limit=1'),
+      ]);
+      el.statUsers.textContent = summary.users != null ? summary.users : '—';
+      el.statPoints.textContent = summary.total_points != null ? summary.total_points : '—';
+      const top = (board && board.leaderboard && board.leaderboard[0]) || summary.top_user;
+      el.statTop.textContent = top ? top.username : '—';
+    } catch (e) {
+      el.statUsers.textContent = '—';
+      el.statPoints.textContent = '—';
+      el.statTop.textContent = '—';
+    }
+  }
+
+  /* ------------------------------- listeler ------------------------------ */
+
+  async function loadUsers() {
+    if (!state.connected) return;
+    const q = el.search.value.trim();
+    el.reload.disabled = true;
+    try {
+      const data = await api('/users?q=' + encodeURIComponent(q) + '&limit=' + encodeURIComponent(el.limit.value));
+      state.users = (data && data.users) || [];
+      renderUsers(q);
+    } catch (e) {
+      el.userList.innerHTML = '<div class="error" style="padding:18px">' + escapeHtml(e.message) + '</div>';
+      toast(e.message, 'err');
+    } finally {
+      el.reload.disabled = false;
+    }
+  }
+
+  function renderUsers(q) {
+    if (!state.users.length) {
+      el.userList.innerHTML = '<div style="padding:18px;color:var(--muted);font-size:12.5px">' +
+        (q ? 'Bu isimde kullanıcı yok.' : 'Kullanıcı yok.') + '</div>';
+      el.listNote.textContent = '';
+      el.detail.hidden = true;
+      return;
+    }
+    el.userList.innerHTML = state.users.map((u) => {
+      const active = state.selected && state.selected.user_id === u.user_id ? ' active' : '';
+      return '<div class="u-item' + active + '" data-id="' + u.user_id + '">' +
+        '<div><div class="nm">' + escapeHtml(u.username) + '</div><div class="id">ID ' + u.user_id + '</div></div>' +
+        '<div class="pt">' + u.points + ' P</div></div>';
+    }).join('');
+
+    el.userList.querySelectorAll('.u-item').forEach((node) => {
+      node.onclick = () => selectUser(Number(node.dataset.id));
+    });
+
+    el.listNote.textContent = state.users.length + ' kullanıcı listelendi' + (state.mock ? ' · demo' : '');
+  }
+
+  async function selectUser(id) {
+    try {
+      const data = await api('/users/' + id);
+      state.selected = data.user;
+      renderDetail();
+      renderUsers(el.search.value.trim());
+    } catch (e) {
+      toast(e.message, 'err');
+    }
+  }
+
+  function renderDetail() {
+    const u = state.selected;
+    if (!u) { el.detail.hidden = true; return; }
+    el.detail.hidden = false;
+
+    el.dName.textContent = u.username;
+    el.dMeta.textContent = 'ID ' + u.user_id + ' · kayıt: ' + fmtDate(u.created_at);
+    el.dPoints.textContent = u.points;
+
+    el.iId.textContent = u.user_id;
+    el.iName.textContent = u.username;
+    el.iPoints.textContent = u.points;
+    el.iSongs.textContent = u.songs_played != null ? u.songs_played : '—';
+    el.iBest.textContent = u.best_score != null ? u.best_score : '—';
+    el.iCreated.textContent = fmtDate(u.created_at);
+
+    el.deleteConfirm.value = '';
+    el.deleteBtn.disabled = true;
+    el.deleteConfirm.placeholder = u.username;
+  }
+
+  /* -------------------------------- puan --------------------------------- */
+
+  async function changePoints(sign) {
+    const u = state.selected;
+    if (!u) return;
+    const amount = Math.abs(Number(el.amount.value) || 0);
+    if (!amount) { toast('Puan miktarı gir', 'err'); return; }
+
+    const delta = sign * amount;
+    const label = delta > 0 ? '+' + delta : String(delta);
+
+    el.giveBtn.disabled = el.takeBtn.disabled = true;
+    try {
+      const res = await api('/points', {
+        method: 'POST',
+        body: { user_id: u.user_id, amount: delta, reason: el.reason.value.trim() || null },
+      });
+      toast(u.username + ': ' + label + ' puan → toplam ' + res.points, 'ok');
+      pushLocalLog({ action: delta > 0 ? 'add_points' : 'remove_points', username: u.username, amount: delta, reason: el.reason.value.trim() || null });
+      el.reason.value = '';
+      await Promise.all([selectUser(u.user_id), loadSummary(), loadLogs()]);
+    } catch (e) {
+      toast(e.message, 'err');
+      pushLocalLog({ action: 'error', username: u.username, amount: delta, reason: e.message });
+    } finally {
+      el.giveBtn.disabled = el.takeBtn.disabled = false;
+    }
+  }
+
+  el.giveBtn.onclick = () => changePoints(1);
+  el.takeBtn.onclick = () => changePoints(-1);
+  document.querySelectorAll('[data-quick]').forEach((btn) => {
+    btn.onclick = () => {
+      const v = Number(btn.dataset.quick);
+      if (v > 0) {
+        el.amount.value = v;
+        changePoints(1);
+      } else {
+        el.amount.value = Math.abs(v);
+        changePoints(-1);
+      }
+    };
+  });
+
+  /* -------------------------------- silme -------------------------------- */
+
+  el.deleteConfirm.oninput = () => {
+    const u = state.selected;
+    if (!u) return;
+    el.deleteBtn.disabled = el.deleteConfirm.value.trim().toLowerCase() !== String(u.username).toLowerCase();
+  };
+
+  el.deleteBtn.onclick = () => {
+    const u = state.selected;
+    if (!u) return;
+    state.pendingDelete = u;
+    el.deleteModalText.innerHTML =
+      '<strong>' + escapeHtml(u.username) + '</strong> (ID ' + u.user_id + ') kalıcı olarak silinecek. ' +
+      'Toplam <strong>' + u.points + ' puan</strong> ve tüm skorları kaybolacak.';
+    el.deleteModal.hidden = false;
+  };
+
+  el.deleteCancelBtn.onclick = () => { el.deleteModal.hidden = true; state.pendingDelete = null; };
+
+  el.deleteConfirmBtn.onclick = async () => {
+    const u = state.pendingDelete;
+    if (!u) return;
+    el.deleteConfirmBtn.disabled = true;
+    try {
+      await api('/users/' + u.user_id, { method: 'DELETE', body: { reason: 'panelden silindi' } });
+      toast(u.username + ' silindi', 'ok');
+      pushLocalLog({ action: 'delete_user', username: u.username, amount: null, reason: null });
+      state.selected = null;
+      el.detail.hidden = true;
+      await Promise.all([loadUsers(), loadSummary(), loadLogs()]);
+    } catch (e) {
+      toast(e.message, 'err');
+    } finally {
+      el.deleteConfirmBtn.disabled = false;
+      el.deleteModal.hidden = true;
+      state.pendingDelete = null;
+    }
+  };
+
+  /* -------------------------------- loglar ------------------------------- */
+
+  function readLocalLogs() {
+    try { return JSON.parse(localStorage.getItem(LS.logs) || '[]'); } catch (_) { return []; }
+  }
+
+  function pushLocalLog(entry) {
+    const logs = readLocalLogs();
+    logs.unshift({
+      at: new Date().toISOString(),
+      action: entry.action,
+      username: entry.username,
+      amount: entry.amount,
+      reason: entry.reason,
+    });
+    localStorage.setItem(LS.logs, JSON.stringify(logs.slice(0, 100)));
+    renderLocalLogs();
+  }
+
+  function renderLocalLogs() {
+    const logs = readLocalLogs();
+    if (!logs.length) {
+      el.localLogs.innerHTML = '<div class="muted">Henüz işlem yok.</div>';
+      return;
+    }
+    el.localLogs.innerHTML = logs.map((l) => {
+      let tag = '<span class="tag add">PUAN +</span>';
+      if (l.action === 'delete_user') tag = '<span class="tag del">SİLME</span>';
+      else if (l.action === 'error') tag = '<span class="tag del">HATA</span>';
+      else if (Number(l.amount) < 0) tag = '<span class="tag remove">PUAN −</span>';
+      const amount = l.amount != null ? ' (' + (Number(l.amount) > 0 ? '+' : '') + l.amount + ')' : '';
+      return '<div class="log-item">' + tag +
+        '<strong>' + escapeHtml(l.username || '—') + '</strong>' + escapeHtml(amount) +
+        (l.reason ? '<div class="t">' + escapeHtml(l.reason) + '</div>' : '') +
+        '<div class="t">' + fmtDate(l.at) + '</div></div>';
+    }).join('');
+  }
+
+  async function loadLogs() {
+    renderLocalLogs();
+    if (!state.connected) return;
+    try {
+      const data = await api('/admin/logs?limit=50');
+      const logs = (data && data.logs) || [];
+      if (!logs.length) {
+        el.serverLogs.innerHTML = '<div class="muted">Sunucuda kayıtlı işlem yok.</div>';
+        return;
+      }
+      el.serverLogs.innerHTML = logs.map((l) => {
+        let tag = '<span class="tag add">PUAN +</span>';
+        if (l.action === 'delete_user') tag = '<span class="tag del">SİLME</span>';
+        else if (l.action === 'remove_points') tag = '<span class="tag remove">PUAN −</span>';
+        const amount = l.amount != null ? ' (' + (Number(l.amount) > 0 ? '+' : '') + l.amount + ')' : '';
+        return '<div class="log-item">' + tag +
+          '<strong>' + escapeHtml(l.target_username || l.username || '—') + '</strong>' + escapeHtml(amount) +
+          (l.reason ? '<div class="t">' + escapeHtml(l.reason) + '</div>' : '') +
+          '<div class="t">' + fmtTimeShort(l.created_at) + ' ' + fmtDate(l.created_at) + (l.admin_ip ? ' · ' + escapeHtml(l.admin_ip) : '') + '</div></div>';
+      }).join('');
+    } catch (e) {
+      el.serverLogs.innerHTML = '<div class="muted">Sunucu kaydı okunamadı: ' + escapeHtml(e.message) + '</div>';
+    }
+  }
+
+  el.clearLocal.onclick = () => {
+    localStorage.removeItem(LS.logs);
+    renderLocalLogs();
+    toast('Yerel kayıt temizlendi', 'ok');
+  };
+
+  /* ------------------------------- dinleyiciler --------------------------- */
+
+  el.reload.onclick = () => { loadUsers(); loadSummary(); };
+  el.reloadLogs.onclick = () => loadLogs();
+  el.limit.onchange = () => loadUsers();
+  el.search.oninput = () => {
+    clearTimeout(state.searchTimer);
+    state.searchTimer = setTimeout(() => loadUsers(), 300);
+  };
+
+  /* ------------------------------- başlangıç ------------------------------ */
+
+  el.gateServer.value = defaultServer;
+  if (params.get('mock') === '1') {
+    el.gateHint.innerHTML = 'Demo modu aktif: sunucu gerekmez, örnek verilerle çalışır.';
+    el.gateMock.click();
+  } else if (state.key) {
+    el.gateKey.value = state.key;
+    el.gateHint.textContent = 'Kayıtlı anahtar bulundu, "Bağlan" ile devam edebilirsin.';
+  } else if (location.protocol.startsWith('http')) {
+    el.gateHint.innerHTML = 'Sunucu adresi otomatik dolduruldu. <code>ADMIN_KEY</code> değerini Render → Environment bölümünden alabilirsin.';
+  }
+})();
+</script>
+</body>
+</html>
