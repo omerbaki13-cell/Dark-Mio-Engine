@@ -60,21 +60,29 @@ function validateCredentials(username, password) {
   return null;
 }
 
-// basit hiz siniri (ayni IP: dakikada 20 istek)
-const hits = new Map();
-function rateLimit(req, res, next) {
-  const ip = req.ip || 'unknown';
-  const now = Date.now();
-  const item = hits.get(ip) || { count: 0, reset: now + 60_000 };
-  if (now > item.reset) {
-    item.count = 0;
-    item.reset = now + 60_000;
-  }
-  item.count++;
-  hits.set(ip, item);
-  if (item.count > 20) return bad(res, 429, 'Cok fazla istek, biraz bekleyin');
-  next();
+// basit hiz siniri (ayni IP, dakikada N istek)
+// Oyun trafigi icin ayri ve daha yuksek bir sinir kullaniyoruz: ayni IP
+// arkasinda birden fazla oyuncu olabilir (mobil operator NAT'i gibi) ve
+// 20/dk siniri mac sonu puanlarinin sessizce dusmesine yol aciyordu.
+function makeLimit(max) {
+  const hits = new Map(); // her sinirin kendi sayaci var (birbirini etkilemesin)
+  return function rateLimit(req, res, next) {
+    const ip = req.ip || 'unknown';
+    const now = Date.now();
+    const item = hits.get(ip) || { count: 0, reset: now + 60_000 };
+    if (now > item.reset) {
+      item.count = 0;
+      item.reset = now + 60_000;
+    }
+    item.count++;
+    hits.set(ip, item);
+    if (item.count > max) return bad(res, 429, 'Cok fazla istek, biraz bekleyin');
+    next();
+  };
 }
+
+const authLimit = makeLimit(20); // giris / kayit (deneme saldirisina karsi)
+const rateLimit = makeLimit(300); // skor, profil, sync
 
 function safeEqual(a, b) {
   const bufA = Buffer.from(String(a));
@@ -111,7 +119,7 @@ app.get('/health', asyncRoute(async (req, res) => {
 
 /* --------------------------- hesap islemleri ------------------------ */
 
-app.post('/register', rateLimit, asyncRoute(async (req, res) => {
+app.post('/register', authLimit, asyncRoute(async (req, res) => {
   const { username, password } = req.body || {};
   const err = validateCredentials(username, password);
   if (err) return bad(res, 400, err);
@@ -129,7 +137,7 @@ app.post('/register', rateLimit, asyncRoute(async (req, res) => {
   }
 }));
 
-app.post('/login', rateLimit, asyncRoute(async (req, res) => {
+app.post('/login', authLimit, asyncRoute(async (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) return bad(res, 400, 'username ve password gerekli');
 
@@ -187,6 +195,71 @@ app.get('/leaderboard', asyncRoute(async (req, res) => {
   }
 
   res.json({ leaderboard: await db.leaderboard(limit), updated_at: new Date().toISOString() });
+}));
+
+/* ------------------------- oyuncu: puan yenileme -------------------- */
+
+// Oyunun "PUANI YENILE" dugmesi icin. Sadece okuma yapar, sifre/hash donmez.
+// Kullanim: GET /profile/12   veya   GET /profile?username=baki
+app.get('/profile/:id', rateLimit, asyncRoute(async (req, res) => {
+  const user = await db.getUser(req.params.id);
+  if (!user) return bad(res, 404, 'Kullanici bulunamadi');
+
+  const stats = await db.userStats(user.id);
+  res.json({
+    success: true,
+    user_id: user.id,
+    username: user.username,
+    points: Number(user.points || 0),
+    songs_played: stats.songs_played || 0,
+    best_score: stats.best_score || 0,
+    last_played: stats.last_played || null,
+  });
+}));
+
+// Kullanici adiyla arama: istemci eski bir user_id tasiyorsa (sunucu degisti)
+// dogru kimligi buradan bulur.
+app.get('/profile', rateLimit, asyncRoute(async (req, res) => {
+  const username = String(req.query.username || '').trim();
+  if (!USERNAME_RE.test(username)) return bad(res, 400, 'username gerekli');
+
+  const user = await db.findUserByUsername(username);
+  if (!user) return bad(res, 404, 'Kullanici bulunamadi');
+
+  const stats = await db.userStats(user.id);
+  res.json({
+    success: true,
+    user_id: user.id,
+    username: user.username,
+    points: Number(user.points || 0),
+    songs_played: stats.songs_played || 0,
+    best_score: stats.best_score || 0,
+    last_played: stats.last_played || null,
+  });
+}));
+
+// Yerel puan sunucudan yuksek kaldiysa (istekler ulasmadiysa) aradaki farki
+// tasir. Sadece YUKARI yazar; puan asla azalmaz.
+// Not: bu oyun istemci tabanli puan kullaniyor, /score de istemciden gelen
+// puan degerini kabul ediyor; bu uc yeni bir yetki genisligi getirmiyor.
+app.post('/sync', rateLimit, asyncRoute(async (req, res) => {
+  const body = req.body || {};
+  const user = await db.getUser(body.user_id);
+  if (!user) return bad(res, 404, 'Kullanici bulunamadi');
+
+  const points = Number(body.points);
+  if (!Number.isFinite(points) || points < 0) return bad(res, 400, 'points gerekli');
+  if (points > 1000000) return bad(res, 400, 'points cok buyuk');
+
+  const before = Number(user.points || 0);
+  if (points <= before) {
+    return res.json({ success: true, points: before, added: 0, user_id: user.id });
+  }
+
+  const next = await db.addPoints(user.id, points - before);
+  if (next == null) return bad(res, 404, 'Kullanici bulunamadi');
+
+  res.json({ success: true, points: next, added: points - before, user_id: user.id });
 }));
 
 /* ------------------------- yonetim: kullanicilar -------------------- */

@@ -24,9 +24,20 @@ var hasPendingResult:Bool = false;
 var pendingResultOk:Bool = false;
 var pendingResultText:String = null;
 var pendingResultErr:String = null;
-	var logoutMode:Bool = false;
-	var logoutYesText:FlxText;
-	var logoutNoText:FlxText;
+		var logoutMode:Bool = false;
+		var logoutYesText:FlxText;
+		var logoutNoText:FlxText;
+
+		// "PUANI YENILE": sunucudaki puanla yerel puanı eşitler
+		var pointsText:FlxText;
+		var refreshText:FlxText;
+		var hasRefreshResult:Bool = false;
+		var refreshResultOk:Bool = false;
+		var refreshResultPoints:Int = 0;
+		var refreshResultPushed:Int = 0;
+		var refreshResultErr:String = null;
+		var refreshWasAuto:Bool = false;
+		var isRefreshing:Bool = false;
 
 var loginButton:FlxText;
 var loginBtnBg:FlxSprite;
@@ -132,10 +143,25 @@ loginBtnBg.visible = false;
 loginButton.visible = false;
 switchModeText.visible = false;
 skipText.text = "Geri Don";
+skipText.y = cardY + 470;
+
+// Toplam puan (sunucu ile esitlenince burada guncellenir)
+pointsText = new FlxText(cardX, cardY + 140, cardW, "", 30);
+pointsText.setFormat(Paths.font("vcr.ttf"), 30, 0xFFFFD34D, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+add(pointsText);
+updatePointsLabel();
+
+// Cikis Yap yerine once puan yenileme
+refreshText = new FlxText(cardX, cardY + 230, cardW, "PUANI YENILE", 26);
+refreshText.setFormat(Paths.font("vcr.ttf"), 26, 0xFF9B6DFF, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+add(refreshText);
 
 logoutYesText = new FlxText(cardX, cardY + 320, cardW, "Cikis Yap", 26);
 logoutYesText.setFormat(Paths.font("vcr.ttf"), 26, FlxColor.RED, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 add(logoutYesText);
+
+// Ekran acilirken bir kez sessizce esitle; dugme ile istenirse tekrar denenir.
+doRefreshPoints(true);
 }
 
 }
@@ -168,11 +194,22 @@ isLoading = false;
 handleResult(pendingResultOk, pendingResultText, pendingResultErr);
 }
 
+if(hasRefreshResult)
+{
+hasRefreshResult = false;
+isRefreshing = false;
+handleRefreshResult(refreshResultOk, refreshResultPoints, refreshResultPushed, refreshResultErr);
+}
+
 if(isLoading) return;
 
 if(logoutMode)
 {
-if(isTouched(logoutYesText))
+if(refreshText != null && isTouched(refreshText))
+{
+doRefreshPoints();
+}
+else if(isTouched(logoutYesText))
 {
 backend.UserSession.logout();
 FlxG.sound.play(Paths.sound("cancelMenu"));
@@ -248,6 +285,137 @@ catch(e:Dynamic)
 statusText.color = FlxColor.RED;
 statusText.text = "Sunucu hatasi";
 }
+}
+
+function updatePointsLabel():Void
+{
+if(pointsText == null) return;
+pointsText.text = "PUAN: " + backend.UserSession.points;
+}
+
+/**
+ * "PUANI YENILE"
+ * 1) Sunucudaki puani okur (kullanici adiyla; user_id degismis olabilir).
+ * 2) Sunucu daha yuksekse yerel puani yukseltir.
+ * 3) Yerel puan daha yuksekse aradaki farki /sync ile sunucuya tasir.
+ *    Puan asla azalmaz, iki taraf esitlenir.
+ */
+function doRefreshPoints(auto:Bool = false):Void
+{
+if(isRefreshing) return; // zaten devam eden bir istek var
+isRefreshing = true;
+refreshWasAuto = auto;
+if(refreshText != null) refreshText.color = FlxColor.GRAY;
+statusText.color = FlxColor.WHITE;
+statusText.text = "Puanlar sunucudan aliniyor...";
+
+var uname:String = backend.UserSession.username;
+var uid:Int = backend.UserSession.userId;
+var localPoints:Int = backend.UserSession.points;
+
+Thread.create(function()
+{
+var ok:Bool = false;
+var serverPoints:Int = 0;
+var pushed:Int = 0;
+var err:String = null;
+
+try
+{
+var url:String = SERVER_URL + "/profile?username=" + StringTools.urlEncode(uname == null ? "" : uname);
+var http:Http = new Http(url);
+http.cnxTimeout = 30;
+var body:String = null;
+http.onData = function(d:String) body = d;
+http.onError = function(e:String) err = e;
+http.request(false);
+
+if(body != null)
+{
+var res:Dynamic = Json.parse(body);
+if(res != null && res.success == true)
+{
+ok = true;
+serverPoints = Std.int(res.points);
+if(res.user_id != null) uid = Std.int(res.user_id);
+}
+else if(res != null && res.error != null) err = Std.string(res.error);
+}
+}
+catch(e:Dynamic) { err = Std.string(e); }
+
+// Yerel puan daha yuksekse farki gonder
+if(ok && localPoints > serverPoints && uid >= 0)
+{
+try
+{
+var up:Http = new Http(SERVER_URL + "/sync");
+up.cnxTimeout = 30;
+up.setHeader("Content-Type", "application/json");
+up.setPostData(Json.stringify({user_id: uid, points: localPoints, username: uname}));
+var upBody:String = null;
+up.onData = function(d:String) upBody = d;
+up.request(false);
+if(upBody != null)
+{
+var r:Dynamic = Json.parse(upBody);
+if(r != null && r.success == true)
+{
+serverPoints = Std.int(r.points);
+pushed = Std.int(r.added);
+}
+}
+}
+catch(e:Dynamic) {}
+}
+
+refreshResultOk = ok;
+refreshResultPoints = serverPoints;
+refreshResultPushed = pushed;
+refreshResultErr = err;
+hasRefreshResult = true;
+});
+}
+
+function handleRefreshResult(ok:Bool, serverPoints:Int, pushed:Int, err:String):Void
+{
+if(refreshText != null) refreshText.color = 0xFF9B6DFF;
+
+if(!ok)
+{
+if(refreshWasAuto)
+{
+// Ekran acilirken yapilan deneme: kullaniciyi kirmizi hata ile korkutma
+statusText.color = FlxColor.GRAY;
+statusText.text = "Cevrimdisi - puanlar cihazda sakli";
+}
+else
+{
+statusText.color = FlxColor.RED;
+statusText.text = turkceHata(err == null ? "Baglanti hatasi" : err);
+}
+updatePointsLabel();
+return;
+}
+
+var local:Int = backend.UserSession.points;
+if(serverPoints > local)
+{
+backend.UserSession.points = serverPoints;
+statusText.color = FlxColor.GREEN;
+statusText.text = "+" + (serverPoints - local) + " puan guncellendi";
+}
+else if(pushed > 0)
+{
+statusText.color = FlxColor.GREEN;
+statusText.text = pushed + " puan sunucuya gonderildi";
+}
+else
+{
+statusText.color = FlxColor.GRAY;
+statusText.text = "Puanlar guncel (" + local + ")";
+}
+updatePointsLabel();
 }
 
 function turkceHata(err:String):String

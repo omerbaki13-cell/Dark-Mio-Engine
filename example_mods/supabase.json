@@ -2,5 +2,5 @@
 	"url": "https://ttippvdvkaggrkbueztn.supabase.co",
 	"anon_key": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR0aXBwdmR2a2FnZ3JrYnVlenRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MzQwODcsImV4cCI6MjEwNTMxMDA4N30.UC7dAJnPneLZB4IDmZVGqJaD3PrkV3EPgSMn4nRU2As",
 	"table": "match_records",
-	"once_per_song": true
+	"once_per_song": false
 }
