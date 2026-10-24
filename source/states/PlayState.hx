@@ -2330,9 +2330,17 @@ class PlayState extends MusicBeatState
 			{
 				try
 				{
-					var http = new haxe.Http('https://psych-nm.onrender.com/score');
+					// Adres LoginState.SERVER_URL'den gelir; burada tekrar yazma.
+					var http = new haxe.Http(states.LoginState.SERVER_URL + '/score');
+					http.cnxTimeout = 30;
 					http.setHeader('Content-Type', 'application/json');
-					http.setPostData(haxe.Json.stringify({user_id: uid, score: earned, song_name: songName}));
+					http.setPostData(haxe.Json.stringify({
+						user_id: uid,
+						score: songScore,
+						song_name: songName,
+						points: earned,
+						match_id: matchId
+					}));
 					http.request(false);
 				}
 				catch(e:Dynamic) {}

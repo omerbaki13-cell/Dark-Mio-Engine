@@ -186,7 +186,7 @@ mükerrer kayıt oluşmaz (409 yanıtı başarı sayılır).
 
 Puan kazanılan maçlarda eski uç noktaya da haber verilir:
 
-`POST https://psych-nm.onrender.com/score` → `{ "user_id": 1, "score": 60, "song_name": "Bopeebo" }`
+`POST https://dark-mio-engine.onrender.com/score` → `{ "user_id": 1, "score": 60000, "song_name": "Bopeebo", "points": 3, "match_id": "..." }`
 
 Bu istek yalnızca maç geçerliyse (botplay / sonsuz mod / antrenman kapalı) ve puan kazanıldıysa
 atılır, böylece hesap tarafındaki puanlar da güncel kalır.
