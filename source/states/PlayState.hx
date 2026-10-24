@@ -183,6 +183,7 @@ class PlayState extends MusicBeatState
 	public static var comboPointsReward:Int = 1; // Her eşikte (20 kombo) kazanılan puan
 	public static var maxComboPointMilestones:Int = 25; // Bir şarkıda en fazla kaç eşik ödüllendirilir
 	public var comboPointsEarned:Int = 0; // Bu maçta kazanılan toplam puan
+	public var comboPointsLog:Array<Dynamic> = []; // Hangi komboda kaç puan alındı (kayda geçer)
 	var comboMilestonesReached:Int = 0; // Bu maçta ulaşılan eşik sayısı
 	public var highestCombo:Int = 0; // Bu maçtaki en yüksek kombo
 
@@ -2163,6 +2164,7 @@ class PlayState extends MusicBeatState
 
 		var newText:String = '';
 		var newColor:Int = FlxColor.WHITE;
+		var livePoints:String = (comboPointsEarned > 0) ? Language.getPhrase('points_live', ' | bu maç: +{1}', [comboPointsEarned]) : '';
 
 		if(!canEarnMatchPoints())
 		{
@@ -2177,7 +2179,7 @@ class PlayState extends MusicBeatState
 		}
 		else
 		{
-			newText = Language.getPhrase('points_active', 'PUAN: {1} KOMBO = +{2}', [comboPointsMilestone, comboPointsReward]);
+			newText = Language.getPhrase('points_active', 'PUAN: {1} KOMBO = +{2}', [comboPointsMilestone, comboPointsReward]) + livePoints;
 			newColor = 0xFF8CFF8C;
 		}
 
@@ -2212,6 +2214,15 @@ class PlayState extends MusicBeatState
 		// Puanlar maç boyunca birikir, şarkı BİTİNCE hesaba eklenir.
 		// Böylece ölüp yeniden başlayınca puan kaybedilmez/haksız kazanılmaz.
 		comboPointsEarned += amount;
+
+		// "Hangi komboda, şarkının hangi saniyesinde kaç puan" kaydı
+		if(comboPointsLog == null) comboPointsLog = [];
+		comboPointsLog.push({
+			combo: combo,
+			points: amount,
+			at: FlxStringUtil.formatTime(Math.floor(Math.max(0, Conductor.songPosition) / 1000), false),
+			step: curStep
+		});
 
 		callOnScripts('onComboPointsEarned', [amount, comboPointsEarned, backend.UserSession.points]);
 
@@ -2251,17 +2262,38 @@ class PlayState extends MusicBeatState
 		var eligible:Bool = canEarnMatchPoints();
 		var alreadyClaimed:Bool = backend.MatchRecords.hasClaimed(matchId);
 		var earned:Int = 0;
+		var reason:String = 'OK';
+
+		// Puan neden verilmedi? (kayda geçer ve ekranda gösterilir)
+		if(!eligible)
+		{
+			if(cpuControlled) reason = 'BOTPLAY';
+			else if(isInfiniteModeOn()) reason = 'SONSUZ MOD';
+			else if(practiceMode) reason = 'ANTRENMAN';
+			else if(chartingMode) reason = 'CHART MODU';
+			else reason = 'KAPALI';
+		}
+		else if(alreadyClaimed) reason = 'ZATEN ALINDI';
+		else if(comboPointsEarned <= 0) reason = 'KOMBO YOK';
 
 		// Puan sadece: maç geçerliyse + bu maçtan daha önce puan alınmadıysa
 		if(eligible && !alreadyClaimed && comboPointsEarned > 0)
 		{
 			earned = comboPointsEarned;
 			// Aynı maçtan ikinci kez puan çıkmaz
-			backend.MatchRecords.markClaimed(matchId);
+			backend.MatchRecords.markClaimed(matchId, earned);
 			matchAlreadyClaimed = true;
-			backend.UserSession.points += earned;
+			backend.UserSession.addPoints(earned);
 
 			showPointsPopup(Language.getPhrase('points_earned_total', 'MAÇ SONU: +{1} PUAN', [earned]), 0xFFFFD34D);
+		}
+		else if(comboPointsEarned > 0 && !eligible)
+		{
+			showPointsPopup(Language.getPhrase('points_blocked', 'PUAN YOK: {1}', [reason]), 0xFFFF6B6B);
+		}
+		else if(comboPointsEarned > 0 && alreadyClaimed)
+		{
+			showPointsPopup(Language.getPhrase('points_already_claimed_popup', 'BU MAÇTAN PUAN ALINMIŞ'), 0xFFFFD34D);
 		}
 
 		var acc:Float = ratingPercent;
@@ -2282,7 +2314,10 @@ class PlayState extends MusicBeatState
 			infinite_mode: isInfiniteModeOn(),
 			practice_mode: practiceMode,
 			story_mode: isStoryMode,
-			eligible: eligible
+			eligible: eligible,
+			points_reason: reason,
+			milestones: comboMilestonesReached,
+			points_log: comboPointsLog
 		});
 
 		// Hesap sunucusuna da bildir (eski sistemle aynı uç nokta).
