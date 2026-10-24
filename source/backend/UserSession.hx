@@ -2,6 +2,22 @@ package backend;
 
 import flixel.util.FlxSave;
 
+/**
+ * KULLANICI OTURUMU
+ * ------------------------------------------------------------------
+ * Düzeltilen hata:
+ *   Puanlar sadece `isLoggedIn == true` iken yükleniyordu. Giriş
+ *   yapılmamışsa (veya oturum düştüyse) oyun her açılışta puanları
+ *   0'dan başlatıyordu -> "çıkıp girince puanlar siliniyor".
+ *   Ayrıca `logout()` puanları sıfırlıyordu.
+ *
+ *   Artık:
+ *   - Puanlar giriş durumundan bağımsız olarak her zaman yükleniyor.
+ *   - Çıkış yapınca puanlar SİLİNMİYOR.
+ *   - Kayıt bozulsa bile MatchRecords'taki toplam puandan (ledger)
+ *     geri toparlanıyor.
+ * ------------------------------------------------------------------
+ */
 class UserSession
 {
 static var _save:FlxSave = null;
@@ -23,17 +39,28 @@ _loaded = true;
 _save = new FlxSave();
 _save.bind("mio_login", "MioEngine");
 var d:Dynamic = _save.data;
-if(d.isLoggedIn == true)
+
+// Giriş bilgileri
+_isLoggedIn = (d.isLoggedIn == true);
+if(d.username != null) _username = d.username;
+_userId = (d.userId != null) ? Std.int(d.userId) : -1;
+
+// PUAN: giriş yapılmamış olsa bile her zaman yükle
+_points = (d.points != null) ? Std.int(d.points) : 0;
+
+// Maç kayıtlarındaki toplam puandan geri toparla (kayıt bozulursa)
+var ledger:Int = 0;
+try { ledger = backend.MatchRecords.awardedTotal(); } catch(e:Dynamic) {}
+if(ledger > _points)
 {
-_isLoggedIn = true;
-_username = d.username;
-_userId = d.userId != null ? d.userId : -1;
-_points = d.points != null ? d.points : 0;
+_points = ledger;
+flush();
 }
 }
 
 static function flush():Void
 {
+if(_save == null) return;
 var d:Dynamic = _save.data;
 d.isLoggedIn = _isLoggedIn;
 d.username = _username;
@@ -51,11 +78,23 @@ static function set_userId(v:Int):Int { ensure(); _userId = v; flush(); return v
 static function get_points():Int { ensure(); return _points; }
 static function set_points(v:Int):Int { ensure(); _points = v; flush(); return v; }
 
+/** Puan ekle ve hemen kaydet. */
+public static function addPoints(amount:Int):Int
+{
+ensure();
+if(amount == 0) return _points;
+_points += amount;
+flush();
+return _points;
+}
+
 public static function logout()
 {
-isLoggedIn = false;
-username = null;
-userId = -1;
-points = 0;
+ensure();
+// Puanlar SİLİNMEZ: bunlar oyuncunun kazandığı puanlar.
+_isLoggedIn = false;
+_username = null;
+_userId = -1;
+flush();
 }
 }

@@ -225,6 +225,13 @@ if(res.success == true)
 UserSession.isLoggedIn = true;
 UserSession.username = res.username;
 UserSession.userId = res.user_id;
+
+// Sunucuda daha yüksek bir puan varsa onu al (yerel puanı ASLA düşürme)
+var serverPoints:Int = 0;
+if(res.points != null) serverPoints = Std.int(res.points);
+else if(res.score != null) serverPoints = Std.int(res.score);
+if(serverPoints > UserSession.points) UserSession.points = serverPoints;
+
 FlxG.sound.play(Paths.sound("confirmMenu"));
 MusicBeatState.switchState(new MainMenuState());
 }

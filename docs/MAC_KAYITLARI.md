@@ -2,6 +2,30 @@
 
 Bu sistem bir şarkı (maç) bittiğinde sonucu kaydeder.
 
+## v2'de düzeltilen hatalar
+
+| Hata | Sebep | Çözüm |
+|---|---|---|
+| Puanlar çıkıp girince siliniyordu | `UserSession` puanı sadece giriş yapılmışsa okuyordu, `logout()` puanı sıfırlıyordu | Puan her zaman yükleniyor, çıkışta silinmiyor, `MatchRecords` toplamından (ledger) geri toparlanıyor |
+| Kayıtlar hep **BEKLİYOR** kalıyordu | `supabase.json` içindeki `.../rest/v1/` URL'sinin üzerine kod bir daha `/rest/v1/` ekliyordu → `.../rest/v1//rest/v1/match_records` → **404** | URL normalize ediliyor (sondaki `/`, `/rest/v1`, `/rest/v1/` kırpılır) |
+| Ayar dosyası okunmuyordu | Sadece `mods/supabase.json` ve kök `supabase.json` aranıyordu | `supabase.json`, `mods/`, `example_mods/` ve bunların alt klasörleri taranıyor |
+| Hatanın sebebi görünmüyordu | HTTP kodu kaydedilmiyordu | Her denemenin kodu/mesajı maç kaydına ve ekrana yazılıyor |
+| "Hangi puanı aldım" belli değildi | Puan dökümü tutulmuyordu | Her eşik için `combo`, `at` (şarkı süresi), `points` kaydı tutuluyor |
+
+### URL nasıl yazılmalı?
+
+Aşağıdakilerin **hepsi** çalışır, kod hepsini aynı adrese çevirir:
+
+```
+https://PROJE.supabase.co
+https://PROJE.supabase.co/
+https://PROJE.supabase.co/rest/v1
+https://PROJE.supabase.co/rest/v1/
+https://PROJE.supabase.co/rest/v1/match_records
+```
+
+Efektif istek adresi her zaman: `https://PROJE.supabase.co/rest/v1/match_records?on_conflict=match_id`
+
 ## Puan kuralları
 
 | Durum | Puan |
@@ -15,6 +39,8 @@ Bu sistem bir şarkı (maç) bittiğinde sonucu kaydeder.
 
 - Puan, kombo eşiğine ulaşıldığı anda **biriktirilir**, şarkı **bitince** hesaba yazılır.
   Böylece ölüp yeniden başlarsan puan kaybetmezsin, şarkıyı bitirirsen kazanırsın.
+- Her eşik için `kombo / şarkı süresi / puan` dökümü maç kaydına yazılır
+  (`points_log`) ve Maç Kayıtları ekranında görünür.
 - Şarkı bitip puan hesaba yazıldığı an o maç "alındı" olarak işaretlenir
   (`MioEngine/mio_matches` kaydı), yani aynı şarkı + zorluk kombinasyonundan ikinci kez puan çıkmaz.
 - Bir maçta en fazla **25 eşik** ödüllendirilir (en fazla 25 puan).
@@ -32,7 +58,10 @@ Ana menüde sol üstte **MAÇ KAYITLARI [TAB]** yazısı vardır:
 
 - Tıkla / dokun ya da **TAB** tuşuna bas → maç listesi açılır.
 - Listede: sıra, şarkı (zorluk), skor, en yüksek kombo, kazanılan puan ve durum
-  (`SENKRON` / `BEKLİYOR` / `PUANSIZ`) görünür.
+  (`SENKRON` / `BEKLİYOR` / `HATA 404 ...`) görünür.
+- Alt panelde seçili maçın **puanı, sebebi** (BOTPLAY / SONSUZ MOD / ZATEN ALINDI / KOMBO YOK),
+  **eşik sayısı**, **puan alınan anlar** (`20x @00:35 = +1, 40x @01:05 = +1`) ve Supabase hata mesajı yazar.
+- Üstte Supabase ayar durumu: ayar yoksa kırmızı, bağlıysa yeşil + son HTTP kodu.
 - `ONAY` (veya ekrandaki A) → bekleyen kayıtları tekrar göndermeyi dener.
 - `SIFIRLA` (veya ekrandaki B) → listeyi yeniler.
 - `GERİ` → ana menüye döner.
@@ -46,8 +75,14 @@ Her maç sonunda oyun klasörüne `render-ingame.json` yazılır:
   "engine": "Dark Mio Engine",
   "render_file": "render-ingame.json",
   "updated_at": "2026-10-23 12:00:00",
+  "supabase_url": "https://PROJE.supabase.co",
+  "config_file": "<oyun klasörü>/mods/supabase.json",
+  "config_error": null,
+  "last_sync_status": 201,
+  "last_sync_error": null,
   "total_matches": 3,
   "total_pending_sync": 0,
+  "awarded_points_total": 12,
   "matches": [
     {
       "match_id": "bopeebo-normal",
@@ -65,7 +100,15 @@ Her maç sonunda oyun klasörüne `render-ingame.json` yazılır:
       "practice_mode": false,
       "story_mode": false,
       "eligible": true,
+      "points_reason": "OK",
+      "milestones": 5,
+      "points_log": [
+        { "combo": 20, "points": 1, "at": "00:35", "step": 217 },
+        { "combo": 40, "points": 1, "at": "01:05", "step": 400 }
+      ],
       "synced": true,
+      "sync_status": "synced",
+      "sync_error": null,
       "played_at": "2026-10-23 12:00:00"
     }
   ]
@@ -81,7 +124,9 @@ Dosya konumu:
 
 ### Ayar dosyası
 
-Oyun klasörüne `mods/supabase.json` koy (örnek: `docs/supabase.example.json`):
+Oyun klasörüne `mods/supabase.json` koy (örnek: `docs/supabase.example.json`).
+Bu klasörde hazır bir `mods/supabase.json` var; kendi projen için düzenle.
+Aynı dosya `example_mods/` içine de konabilir.
 
 ```json
 {
