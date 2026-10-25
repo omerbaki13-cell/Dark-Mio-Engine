@@ -60,7 +60,8 @@ Ana menüde sol üstte **MAÇ KAYITLARI [TAB]** yazısı vardır:
 
 - Tıkla / dokun ya da **TAB** tuşuna bas → maç listesi açılır.
 - Listede: sıra, şarkı (zorluk), skor, en yüksek kombo, kazanılan puan ve durum
-  (`SENKRON` / `BEKLİYOR` / `HATA 404 ...`) görünür.
+  (`SENKRON` / `BEKLİYOR` / `HATA TABLO YOK - migration.sql calistir | HTTP 404`) görünür.
+  Durum sütunu kısadır; tam mesaj alt panelde yazar.
 - Alt panelde seçili maçın **puanı, sebebi** (BOTPLAY / SONSUZ MOD / ZATEN ALINDI / KOMBO YOK),
   **eşik sayısı**, **puan alınan anlar** (`20x @00:35 = +1, 40x @01:05 = +1`) ve Supabase hata mesajı yazar.
 - Üstte Supabase ayar durumu: ayar yoksa kırmızı, bağlıysa yeşil + son HTTP kodu.
@@ -148,7 +149,8 @@ ve ayarlar eklendiğinde otomatik gönderilir (her frame denenir, oyunu dondurma
 
 ### Tablo (SQL)
 
-Supabase > SQL Editor:
+Supabase > SQL Editor → `server/supabase/migration.sql` dosyasının tamamını çalıştır.
+Tek ihtiyacın `match_records` ise bu blok yeterli:
 
 ```sql
 create table if not exists public.match_records (
@@ -173,12 +175,24 @@ create table if not exists public.match_records (
 
 alter table public.match_records enable row level security;
 
+drop policy if exists "anon can insert matches" on public.match_records;
 create policy "anon can insert matches"
   on public.match_records for insert to anon with check (true);
 
+-- upsert (on_conflict=match_id, resolution=merge-duplicates) UPDATE ister
+drop policy if exists "anon can update matches" on public.match_records;
+create policy "anon can update matches"
+  on public.match_records for update to anon using (true) with check (true);
+
+drop policy if exists "anon can read matches" on public.match_records;
 create policy "anon can read matches"
   on public.match_records for select to anon using (true);
 ```
+
+> **404 / `PGRST205`** ("Could not find the table 'public.match_records'")
+> = tablo hiç oluşturulmamış. Yukarıdaki SQL'i çalıştır, oyunu açmadan
+> tekrar dene; bekleyen kayıtlar kendiliğinden gönderilir. Maç Kayıtları
+> ekranında **ONAY** ile de elle tekrar gönderebilirsin.
 
 İstemci, `POST /rest/v1/match_records` isteğini `apikey` + `Authorization: Bearer <anon_key>`
 başlıklarıyla atar. `match_id` tekil olduğu için aynı maç iki kez gönderilse bile tabloda

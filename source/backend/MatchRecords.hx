@@ -657,12 +657,47 @@ class MatchRecords
 			errorMsg = Std.string(e);
 		}
 
+		// Hata yanıtlarında onData çağrılmıyor; gövde (ör. PGRST205 mesajı)
+		// Http.responseData içinde kalabiliyor.
+		if(responseBody == null || responseBody.length == 0)
+		{
+			try
+			{
+				var raw:String = http.responseData;
+				if(raw != null) responseBody = raw;
+			}
+			catch(e:Dynamic) {}
+		}
+
 		return {
 			status: statusCode,
 			error: errorMsg,
 			body: responseBody,
 			url: url
 		};
+	}
+
+	/**
+	 * HTTP kodunu kullanıcıya anlaşılır sebebe çevirir.
+	 * (Ekranda "HATA <sebep>" olarak görünür.)
+	 */
+	static function reasonForStatus(status:Int):String
+	{
+		switch(status)
+		{
+			case 0:
+				return 'BAGLANTI YOK';
+			case 401 | 403:
+				return 'YETKI YOK - POLICY';
+			case 404:
+				return 'TABLO YOK - SQL';
+			case 400:
+				return 'SUTUN UYUSMAZLIGI';
+			case 429:
+				return 'COK ISTEK - bekle';
+			default:
+				return null;
+		}
 	}
 
 	static function postRecord(record:Dynamic):Dynamic
@@ -689,7 +724,12 @@ class MatchRecords
 		{
 			var body:String = res.body != null ? Std.string(res.body) : '';
 			if(body.length > 200) body = body.substr(0, 200);
-			err = (res.error != null ? Std.string(res.error) : 'HTTP ' + status) + (body.length > 0 ? ' | ' + body : '');
+
+			var reason:String = reasonForStatus(status);
+			var detail:String = (res.error != null ? Std.string(res.error) : 'HTTP ' + status);
+			if(detail == null || detail.length < 1) detail = 'HTTP ' + status;
+
+			err = (reason != null ? reason + ' | ' : '') + detail + (body.length > 0 ? ' | ' + body : '');
 		}
 
 		return cast {id: record.match_id, ok: ok, status: status, error: err, url: res.url};
