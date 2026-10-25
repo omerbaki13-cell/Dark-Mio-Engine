@@ -197,6 +197,49 @@ app.get('/leaderboard', asyncRoute(async (req, res) => {
   res.json({ leaderboard: await db.leaderboard(limit), updated_at: new Date().toISOString() });
 }));
 
+/* --------------------- mac kaydi arsivi (oyun) --------------------- */
+
+// Oyun, mac kaydini normalde dogrudan Supabase'e yazar. Tablo yoksa
+// (PGRST205/404) buraya duser; boylece ekranda "HATA 404" kalmaz.
+// Hem Supabase hem sunucu icin ayni govde kullanilir.
+app.post(['/matches', '/match-records'], rateLimit, asyncRoute(async (req, res) => {
+  const body = req.body || {};
+  const matchId = String(body.match_id || body.matchId || '').trim();
+  if (!matchId) return bad(res, 400, 'match_id gerekli');
+
+  const result = await db.saveMatchRecord({
+    matchId,
+    username: body.username || null,
+    userId: body.user_id != null ? body.user_id : body.userId,
+    song: body.song || null,
+    difficulty: body.difficulty || null,
+    score: body.score,
+    maxCombo: body.max_combo != null ? body.max_combo : body.maxCombo,
+    misses: body.misses,
+    accuracy: body.accuracy,
+    points: body.points,
+    botplay: body.botplay,
+    infiniteMode: body.infinite_mode != null ? body.infinite_mode : body.infiniteMode,
+    practiceMode: body.practice_mode != null ? body.practice_mode : body.practiceMode,
+    storyMode: body.story_mode != null ? body.story_mode : body.storyMode,
+    playedAt: body.played_at || body.playedAt || null,
+  });
+
+  res.json({
+    success: true,
+    match_id: matchId,
+    archived: Boolean(result && result.archived),
+    duplicate: Boolean(result && result.duplicate),
+    missing_table: Boolean(result && result.missingTable),
+    storage: db.kind,
+  });
+}));
+
+app.get('/matches', rateLimit, asyncRoute(async (req, res) => {
+  const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 50));
+  res.json({ matches: await db.listMatchRecords(limit) });
+}));
+
 /* ------------------------- oyuncu: puan yenileme -------------------- */
 
 // Oyunun "PUANI YENILE" dugmesi icin. Sadece okuma yapar, sifre/hash donmez.

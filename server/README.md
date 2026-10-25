@@ -52,8 +52,12 @@ Demo olmadan paneli denemek istersen: `/panel` → **Demo modu** düğmesi
 
 ## 2. Supabase ile gerçek kurulum
 
-1. Supabase projesi aç → **SQL Editor** → `supabase/migration.sql` dosyasının
-   tamamını yapıştır ve çalıştır. Bu; `users` (puan kolonu dahil), `scores`,
+1. Supabase projesi aç → **SQL Editor** → `server/supabase/migration.sql` dosyasının
+   tamamını yapıştır ve çalıştır.
+   - Tablolar zaten var ama birkaçı eksikse `server/supabase/fix-tables.sql`
+     dosyasını çalıştır (her ifade tek satır, kopyalama bozulmasına dayanıklı).
+   - **Dashboard'daki "Connect" penceresi tablo oluşturmaz**; sadece URL ve
+     anahtarları gösterir. Tablolar yalnızca SQL Editor ile oluşur. Bu; `users` (puan kolonu dahil), `scores`,
    `matches` ve `admin_logs` tablolarını + indeksleri oluşturur.
 2. **Project Settings → API** bölümünden şu iki değeri al:
    - `Project URL` → `SUPABASE_URL`
@@ -117,13 +121,15 @@ Tüm cevaplar JSON. Hata formatı: `{ "success": false, "error": "mesaj" }`.
 
 | Metot | Yol | Gövde / Sorgu | Cevap |
 | --- | --- | --- | --- |
-| `GET` | `/health` | — | `{status, storage, admin_enabled, detail}` |
+| `GET` | `/health` | — | `{status, storage, admin_enabled, detail}` — `detail.missing_tables` eksik tabloları listeler |
 | `POST` | `/register` | `{username, password}` | `{success, user_id, username, points}` · `409` kullanıcı varsa |
 | `POST` | `/login` | `{username, password}` | `{success, user_id, username, points}` · `401` hatalıysa |
 | `POST` | `/score` | `{user_id, score, song_name, points?, match_id?}` | `{success, points, added, duplicate}` |
 | `GET` | `/leaderboard` | `?limit=25` | `{leaderboard:[{rank,user_id,username,points,songs_played,best_score,last_played}], updated_at}` |
 | `GET` | `/profile/:id` | — | `{success, user_id, username, points, songs_played, best_score, last_played}` |
 | `GET` | `/profile` | `?username=baki` | aynı (istemci eski `user_id` taşıyorsa doğru kimliği bulur) |
+| `POST` | `/matches` | `{match_id, username, user_id, song, score, points, ...}` | `{success, archived, duplicate, missing_table}` — maç kaydı arşivi (Supabase tablosu yoksa sunucu kendi depolar) |
+| `GET` | `/matches` | `?limit=50` | `{matches:[...]}` — son maç kayıtları |
 | `POST` | `/sync` | `{user_id, points}` | `{success, points, added}` — sadece **yukarı** yazar, puan asla azalmaz |
 
 `/profile` ve `/sync`, oyunun **"PUANI YENILE"** düğmesi içindir: sunucudaki puanı

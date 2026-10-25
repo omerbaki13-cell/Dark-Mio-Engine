@@ -39,6 +39,10 @@ class MatchRecords
 	// varsayılan false yapıldı. Ayar dosyasındaki "once_per_song" bunu ezebilir.
 	public static var oncePerSong:Bool = false;
 
+	// Hesap sunucusu. Supabase tablosu yoksa mac kaydi buraya gonderilir
+	// (POST /matches) boylece ekranda 404 hatasi kalmaz.
+	public static var API_BASE:String = 'https://dark-mio-engine.onrender.com';
+
 	public static var RENDER_FILE_NAME:String = 'render-ingame.json';
 	public static var MAX_PENDING:Int = 50;
 	public static var RETRY_SECONDS:Float = 8.0;
@@ -657,12 +661,89 @@ class MatchRecords
 			errorMsg = Std.string(e);
 		}
 
+		// Hata yanıtlarında onData çağrılmıyor; gövde (ör. PGRST205 mesajı)
+		// Http.responseData içinde kalabiliyor.
+		if(responseBody == null || responseBody.length == 0)
+		{
+			try
+			{
+				var raw:String = http.responseData;
+				if(raw != null) responseBody = raw;
+			}
+			catch(e:Dynamic) {}
+		}
+
 		return {
 			status: statusCode,
 			error: errorMsg,
 			body: responseBody,
 			url: url
 		};
+	}
+
+	/**
+	 * HTTP kodunu kullanıcıya anlaşılır sebebe çevirir.
+	 * (Ekranda "HATA <sebep>" olarak görünür.)
+	 */
+	static function reasonForStatus(status:Int):String
+	{
+		switch(status)
+		{
+			case 0:
+				return 'BAGLANTI YOK';
+			case 401 | 403:
+				return 'YETKI YOK - POLICY';
+			case 404:
+				return 'TABLO YOK - SQL';
+			case 400:
+				return 'SUTUN UYUSMAZLIGI';
+			case 429:
+				return 'COK ISTEK - bekle';
+			default:
+				return null;
+		}
+	}
+
+	/** Mac kaydini hesap sunucusuna yazar (Supabase yedegi). */
+	static function postToServer(record:Dynamic):Dynamic
+	{
+		if(API_BASE == null || API_BASE.length < 8) return null;
+
+		var url:String = API_BASE + '/matches';
+		var statusCode:Int = 0;
+		var http:Http = new Http(url);
+		http.cnxTimeout = 20;
+		http.setHeader('Content-Type', 'application/json');
+		http.setPostData(Json.stringify({
+			match_id: record.match_id,
+			username: record.username,
+			user_id: record.user_id,
+			song: record.song,
+			difficulty: record.difficulty,
+			score: record.score,
+			max_combo: record.max_combo,
+			misses: record.misses,
+			accuracy: record.accuracy,
+			points: record.points,
+			botplay: record.botplay == true,
+			infinite_mode: record.infinite_mode == true,
+			practice_mode: record.practice_mode == true,
+			story_mode: record.story_mode == true,
+			played_at: record.played_at
+		}));
+		http.onStatus = function(st:Int) { statusCode = st; };
+
+		try
+		{
+			http.request(true);
+		}
+		catch(e:Dynamic)
+		{
+			return cast {ok: false, status: 0, url: url};
+		}
+
+		var ok:Bool = (statusCode >= 200 && statusCode < 300);
+		return cast {ok: ok, status: statusCode, url: url};
 	}
 
 	static function postRecord(record:Dynamic):Dynamic
@@ -684,12 +765,34 @@ class MatchRecords
 		}
 
 		var ok:Bool = (status >= 200 && status < 300) || status == 409;
+
+		// Supabase'de match_records tablosu yok / ulasilamiyor -> kendi sunucumuza yaz
+		if(!ok && (status == 404 || status == 0 || status >= 500))
+		{
+			var fb:Dynamic = postToServer(record);
+			if(fb != null && fb.ok == true)
+			{
+				return cast {
+					id: record.match_id,
+					ok: true,
+					status: Std.int(fb.status),
+					error: 'sunucu arsivine gonderildi (Supabase tablosu yok)',
+					url: Std.string(fb.url)
+				};
+			}
+		}
+
 		var err:String = null;
 		if(!ok)
 		{
 			var body:String = res.body != null ? Std.string(res.body) : '';
 			if(body.length > 200) body = body.substr(0, 200);
-			err = (res.error != null ? Std.string(res.error) : 'HTTP ' + status) + (body.length > 0 ? ' | ' + body : '');
+
+			var reason:String = reasonForStatus(status);
+			var detail:String = (res.error != null ? Std.string(res.error) : 'HTTP ' + status);
+			if(detail == null || detail.length < 1) detail = 'HTTP ' + status;
+
+			err = (reason != null ? reason + ' | ' : '') + detail + (body.length > 0 ? ' | ' + body : '');
 		}
 
 		return cast {id: record.match_id, ok: ok, status: status, error: err, url: res.url};

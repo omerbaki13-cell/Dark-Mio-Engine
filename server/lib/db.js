@@ -23,6 +23,7 @@ function createMemoryDb() {
   const scores = []; // {id, user_id, score, song_name, created_at}
   const matches = new Map(); // match_id -> {user_id, points}
   const logs = []; // admin islem gecmisi
+  const matchArchive = []; // mac kaydi arsivi (match_records kopyasi)
   let userSeq = 1;
   let scoreSeq = 1;
   let logSeq = 1;
@@ -127,6 +128,55 @@ function createMemoryDb() {
       return { duplicate: false, points: u.points };
     },
 
+    /**
+     * Mac kaydini match_records tablosuna yazar.
+     * Tablo yoksa (PGRST205 / 404) hata firlatmaz; archived:false doner ve
+     * cagiran taraf kaydi baska yere yazabilir.
+     */
+    async saveMatchRecord(rec) {
+      const payload = {
+        match_id: rec.matchId,
+        username: rec.username || null,
+        user_id: Number(rec.userId) || null,
+        song: rec.song || null,
+        difficulty: rec.difficulty || null,
+        score: Number(rec.score) || 0,
+        max_combo: Number(rec.maxCombo) || 0,
+        misses: Number(rec.misses) || 0,
+        accuracy: rec.accuracy != null ? Number(rec.accuracy) : null,
+        points: Number(rec.points) || 0,
+        botplay: rec.botplay === true,
+        infinite_mode: rec.infiniteMode === true,
+        practice_mode: rec.practiceMode === true,
+        story_mode: rec.storyMode === true,
+        played_at: rec.playedAt || null,
+      };
+
+      const res = await supabase
+        .from('match_records')
+        .insert(payload)
+        .select('match_id');
+
+      if (res.error) {
+        if (res.error.code === '23505') return { archived: true, duplicate: true };
+        const msg = String(res.error.message || '');
+        const missing = res.error.code === 'PGRST205' || /could not find the table|relation .* does not exist/i.test(msg);
+        if (!missing) console.warn('[db] mac kaydi:', msg);
+        return { archived: false, missingTable: missing, error: msg };
+      }
+      return { archived: true };
+    },
+
+    async listMatchRecords(limit = 50) {
+      const res = await supabase
+        .from('match_records')
+        .select('match_id, username, song, difficulty, score, max_combo, points, played_at, created_at')
+        .order('created_at', { ascending: false })
+        .limit(Math.min(200, limit));
+      if (res.error) return [];
+      return res.data || [];
+    },
+
     async userStats(id) {
       const uid = Number(id);
       const mine = scores.filter((s) => s.user_id === uid);
@@ -165,6 +215,36 @@ function createMemoryDb() {
           created_at: s.created_at,
           users: { username: (users.get(s.user_id) || {}).username || 'bilinmeyen' },
         }));
+    },
+
+    /**
+     * Mac kaydi arsivi (oyunun Supabase'e dogrudan yazabildigi tablonun
+     * sunucu tarafi kopyasi). match_records tablosu yoksa bellege yazilir.
+     */
+    async saveMatchRecord(rec) {
+      if (matchArchive.some((m) => m.match_id === rec.matchId)) {
+        return { archived: true, duplicate: true, storage: 'memory' };
+      }
+      matchArchive.unshift({
+        match_id: rec.matchId,
+        username: rec.username || null,
+        user_id: rec.userId != null ? Number(rec.userId) : null,
+        song: rec.song || null,
+        difficulty: rec.difficulty || null,
+        score: Number(rec.score) || 0,
+        max_combo: Number(rec.maxCombo) || 0,
+        misses: Number(rec.misses) || 0,
+        accuracy: rec.accuracy != null ? Number(rec.accuracy) : null,
+        points: Number(rec.points) || 0,
+        played_at: rec.playedAt || null,
+        created_at: now(),
+      });
+      while (matchArchive.length > 500) matchArchive.pop();
+      return { archived: true, storage: 'memory' };
+    },
+
+    async listMatchRecords(limit = 50) {
+      return matchArchive.slice(0, Math.min(200, limit));
     },
 
     async logAction(entry) {
@@ -225,10 +305,29 @@ function createSupabaseDb(url, serviceKey) {
 
     async health() {
       const res = await selectUsers('id, username, points', (q) => q.limit(1));
+
+      // Servisin ihtiyac duydugu tablolar gercekten var mi?
+      // (Supabase'de SQL calistirilmadiysa burada gorunur.)
+      const required = ['users', 'scores', 'matches', 'admin_logs'];
+      const missing = [];
+      await Promise.all(required.map(async (table) => {
+        const r = await supabase.from(table).select('*', { head: true, count: 'exact' }).limit(1);
+        if (r.error) {
+          const msg = String(r.error.message || '');
+          if (r.error.code === 'PGRST205' || /could not find the table|does not exist/i.test(msg)) {
+            missing.push(table);
+          }
+        }
+      }));
+
       return {
         ok: !res.error,
         detail: {
           points_column: pointsColumn,
+          missing_tables: missing.sort(),
+          setup_hint: missing.length
+            ? 'Supabase > SQL Editor: server/supabase/migration.sql calistir'
+            : null,
           error: res.error ? res.error.message : null,
         },
       };
