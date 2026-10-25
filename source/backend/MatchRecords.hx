@@ -58,7 +58,10 @@ class MatchRecords
 	static var _claimed:Array<String> = []; // puanı alınmış maç anahtarları
 	static var _pending:Array<Dynamic> = []; // Supabase'e gönderilecek kayıtlar
 	static var _threadResults:Array<Dynamic> = []; // arka plandan dönen sonuçlar
-	static var _awardedTotal:Int = 0; // toplam kazanılmış puan (ledger)
+	static var _awardedTotal:Int = 0; // eski alan (uyumluluk icin toplam)
+	// Hesap BASINA kazanılmış puan: {"kullanici": 12, ...}. Global tutulsaydı
+	// hesap değiştirince puan diğer hesaba sızıyordu.
+	static var _awardedByUser:Dynamic = null;
 	static var _sending:Bool = false;
 	static var _nextRetry:Float = 0;
 	static var _wroteOnce:Bool = false;
@@ -104,14 +107,23 @@ class MatchRecords
 		if(d.claimed != null) _claimed = d.claimed;
 		if(d.pending != null) _pending = d.pending;
 		if(d.awardedTotal != null) _awardedTotal = Std.int(d.awardedTotal);
+		if(d.awardedByUser != null) _awardedByUser = d.awardedByUser;
+		if(_awardedByUser == null) _awardedByUser = {};
 
-		// Ledger yoksa eski kayıtlardan hesapla
+		// Ledger yoksa eski kayıtlardan hesapla (aktif kullanıcıya yazılır)
 		if(_awardedTotal <= 0)
 		{
 			var sum:Int = 0;
 			for(m in _matches)
 				if(m != null && m.points != null) sum += Std.int(m.points);
 			_awardedTotal = sum;
+		}
+
+		// Eski (global) ledger'ı aktif kullanıcıya taşı — bir kez
+		if(_awardedTotal > 0 && Reflect.fields(_awardedByUser).length == 0)
+		{
+			var legacyKey:String = currentUserKey();
+			if(legacyKey != '_misafir') Reflect.setField(_awardedByUser, legacyKey, _awardedTotal);
 		}
 
 		if(d.threadResults != null && d.threadResults.length > 0)
@@ -133,6 +145,7 @@ class MatchRecords
 		d.claimed = _claimed;
 		d.pending = _pending;
 		d.awardedTotal = _awardedTotal;
+		d.awardedByUser = _awardedByUser;
 		d.threadResults = _threadResults;
 		_save.flush();
 	}
@@ -354,15 +367,36 @@ class MatchRecords
 			// her oynayış ayrı anahtar ürettiği için liste sonsuz büyümesin
 			while(_claimed.length > 500) _claimed.shift();
 		}
-		if(points > 0) _awardedTotal += points;
+		if(points > 0)
+		{
+			_awardedTotal += points;
+			var key:String = currentUserKey();
+			if(_awardedByUser == null) _awardedByUser = {};
+			var cur:Int = 0;
+			var v:Dynamic = Reflect.field(_awardedByUser, key);
+			if(v != null) cur = Std.int(v);
+			Reflect.setField(_awardedByUser, key, cur + points);
+		}
 		flush();
 	}
 
 	/** Bugüne kadar kazanılmış toplam puan (ledger). */
+	/** Aktif kullanıcının kazandığı toplam puan (hesap başına). */
 	public static function awardedTotal():Int
 	{
 		ensure();
-		return _awardedTotal;
+		if(_awardedByUser == null) return 0;
+		var v:Dynamic = Reflect.field(_awardedByUser, currentUserKey());
+		return (v == null) ? 0 : Std.int(v);
+	}
+
+	/** Aktif kullanıcının ledger anahtarı (küçük harf). */
+	static function currentUserKey():String
+	{
+		var name:String = null;
+		try { name = backend.UserSession.username; } catch(e:Dynamic) {}
+		if(name == null || name.length == 0) return '_misafir';
+		return name.toLowerCase();
 	}
 
 	public static function isEligible(botplay:Bool, infiniteMode:Bool, practice:Bool, charting:Bool):Bool
@@ -465,7 +499,7 @@ class MatchRecords
 			last_sync_url: lastSyncUrl,
 			total_matches: _matches.length,
 			total_pending_sync: _pending.length,
-			awarded_points_total: _awardedTotal,
+			awarded_points_total: awardedTotal(),
 			matches: _matches
 		};
 	}
@@ -802,6 +836,7 @@ class MatchRecords
 		_pending = [];
 		_threadResults = [];
 		_awardedTotal = 0;
+		_awardedByUser = {};
 		flush();
 		writeRenderFile();
 	}

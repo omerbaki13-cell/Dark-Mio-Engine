@@ -28,6 +28,13 @@ var pendingResultErr:String = null;
 		var logoutYesText:FlxText;
 		var logoutNoText:FlxText;
 
+		// Coklu hesap: hesap listesi ekrani
+		var wantLoginForm:Bool = false;   // true -> hesap listesi yerine giris formu
+		var accountRows:Array<FlxText> = [];
+		var cardX:Float = 0;
+		var cardY:Float = 0;
+		var cardW:Int = 600;
+
 		// "PUANI YENILE": sunucudaki puanla yerel puanı eşitler
 		var pointsText:FlxText;
 		var refreshText:FlxText;
@@ -48,6 +55,12 @@ var subText:FlxText;
 var userLabel:FlxText;
 var passLabel:FlxText;
 
+public function new(?forceLoginForm:Bool = false)
+{
+super();
+wantLoginForm = forceLoginForm;
+}
+
 override function create()
 {
 super.create();
@@ -56,10 +69,10 @@ persistentUpdate = persistentDraw = true;
 var bg:FlxSprite = new FlxSprite().makeGraphic(FlxG.width, FlxG.height, FlxColor.BLACK);
 add(bg);
 
-var cardW:Int = 600;
 var cardH:Int = 620;
-var cardX:Float = (FlxG.width - cardW) / 2;
-var cardY:Float = (FlxG.height - cardH) / 2;
+cardW = 600;
+cardX = (FlxG.width - cardW) / 2;
+cardY = (FlxG.height - cardH) / 2;
 
 var card:FlxSprite = new FlxSprite(cardX, cardY).makeGraphic(cardW, cardH, FlxColor.fromRGB(30, 20, 45));
 add(card);
@@ -108,6 +121,8 @@ switchModeText.setFormat(Paths.font("vcr.ttf"), 20, FlxColor.fromRGB(180, 130, 2
 add(switchModeText);
 
 skipText = new FlxText(cardX, cardY + 490, cardW, "Atla", 20);
+// Kayitli hesap varsa buradan hesap listesine donulebilir
+if(backend.UserSession.accountCount() > 0) skipText.text = "Hesaplar";
 skipText.setFormat(Paths.font("vcr.ttf"), 20, FlxColor.GRAY, CENTER);
 add(skipText);
 
@@ -130,11 +145,12 @@ FlxG.stage.addChild(passwordInput);
 loginBtnBg = new FlxSprite(cardX + 50, cardY + 310).makeGraphic(500, 60, FlxColor.fromRGB(120, 80, 200));
 add(loginBtnBg);
 
-if(backend.UserSession.isLoggedIn)
+// Cihazda kayitli hesap varsa (giris yapilmamis olsa bile) hesap listesi gosterilir.
+if(!wantLoginForm && (backend.UserSession.isLoggedIn || backend.UserSession.accountCount() > 0))
 {
 logoutMode = true;
-titleText.text = "HESABIN";
-subText.text = backend.UserSession.username;
+titleText.text = "HESAPLAR";
+subText.text = "Hesap sec veya yeni hesap ekle";
 usernameInput.visible = false;
 passwordInput.visible = false;
 userLabel.visible = false;
@@ -143,31 +159,42 @@ loginBtnBg.visible = false;
 loginButton.visible = false;
 switchModeText.visible = false;
 skipText.text = "Geri Don";
-skipText.y = cardY + 470;
+skipText.y = cardY + 525;
 
-// Toplam puan (sunucu ile esitlenince burada guncellenir)
-pointsText = new FlxText(cardX, cardY + 140, cardW, "", 30);
+// Aktif hesabin toplam puani (hesap degisince burasi da degisir)
+pointsText = new FlxText(cardX, cardY + 118, cardW, "", 30);
 pointsText.setFormat(Paths.font("vcr.ttf"), 30, 0xFFFFD34D, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 add(pointsText);
-updatePointsLabel();
 
-// Cikis Yap yerine once puan yenileme
-refreshText = new FlxText(cardX, cardY + 230, cardW, "PUANI YENILE", 26);
-refreshText.setFormat(Paths.font("vcr.ttf"), 26, 0xFF9B6DFF, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+// Hesap listesi (en fazla 4) — renderAccounts() doldurur
+refreshText = new FlxText(cardX, cardY + 420, cardW, "PUANI YENILE", 24);
+refreshText.setFormat(Paths.font("vcr.ttf"), 24, 0xFF9B6DFF, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 add(refreshText);
 
-logoutYesText = new FlxText(cardX, cardY + 320, cardW, "Cikis Yap", 26);
-logoutYesText.setFormat(Paths.font("vcr.ttf"), 26, FlxColor.RED, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+logoutYesText = new FlxText(cardX, cardY + 472, cardW, "Cikis Yap", 24);
+logoutYesText.setFormat(Paths.font("vcr.ttf"), 24, FlxColor.RED, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
 add(logoutYesText);
 
+renderAccounts();
+
 // Ekran acilirken bir kez sessizce esitle; dugme ile istenirse tekrar denenir.
-doRefreshPoints(true);
+if(backend.UserSession.isLoggedIn) doRefreshPoints(true);
 }
 
 }
 
 override function destroy()
 {
+for(r in accountRows)
+{
+if(r != null)
+{
+remove(r, true);
+r.destroy();
+}
+}
+accountRows = [];
+
 if(usernameInput != null && usernameInput.parent != null) usernameInput.parent.removeChild(usernameInput);
 if(passwordInput != null && passwordInput.parent != null) passwordInput.parent.removeChild(passwordInput);
 super.destroy();
@@ -205,15 +232,23 @@ if(isLoading) return;
 
 if(logoutMode)
 {
+// 1) Hesap listesi: dolu satir = o hesaba gec, bos satir = yeni hesap ekle
+var accounts:Array<Dynamic> = backend.UserSession.getAccounts();
+for(i in 0...accountRows.length)
+{
+if(!isTouched(accountRows[i])) continue;
+if(i < accounts.length) trySwitchTo(Std.string(accounts[i].username));
+else addAnotherAccount();
+return;
+}
+
 if(refreshText != null && isTouched(refreshText))
 {
 doRefreshPoints();
 }
 else if(isTouched(logoutYesText))
 {
-backend.UserSession.logout();
-FlxG.sound.play(Paths.sound("cancelMenu"));
-MusicBeatState.switchState(new LoginState());
+removeActiveAccount();
 }
 else if(isTouched(skipText) || controls.BACK)
 {
@@ -238,6 +273,9 @@ FlxG.sound.play(Paths.sound("scrollMenu"));
 else if(isTouched(skipText) || controls.BACK)
 {
 FlxG.sound.play(Paths.sound("cancelMenu"));
+if(backend.UserSession.accountCount() > 0)
+MusicBeatState.switchState(new LoginState()); // hesap listesine don
+else
 MusicBeatState.switchState(new MainMenuState());
 }
 }
@@ -261,15 +299,13 @@ try
 var res:Dynamic = Json.parse(data);
 if(res.success == true)
 {
-UserSession.isLoggedIn = true;
-UserSession.username = res.username;
-UserSession.userId = res.user_id;
-
-// Sunucuda daha yüksek bir puan varsa onu al (yerel puanı ASLA düşürme)
+// Hesabi cihazdaki listeye ekler (en fazla 4) ve aktif yapar.
+// Puanlar hesap basina tutulur: hesap degistirince puan karismaz.
 var serverPoints:Int = 0;
 if(res.points != null) serverPoints = Std.int(res.points);
 else if(res.score != null) serverPoints = Std.int(res.score);
-if(serverPoints > UserSession.points) UserSession.points = serverPoints;
+var newId:Int = (res.user_id != null) ? Std.int(res.user_id) : -1;
+UserSession.loginAccount(Std.string(res.username), newId, serverPoints);
 
 FlxG.sound.play(Paths.sound("confirmMenu"));
 MusicBeatState.switchState(new MainMenuState());
@@ -291,6 +327,125 @@ function updatePointsLabel():Void
 {
 if(pointsText == null) return;
 pointsText.text = "PUAN: " + backend.UserSession.points;
+}
+
+// ------------------------------------------------------------------
+// COKLU HESAP  (en fazla 4 hesap, sifre girmeden gecis)
+// ------------------------------------------------------------------
+
+/** Hesap listesini cizer: dolu satir = kayitli hesap, bos satir = "Giris yap". */
+function renderAccounts():Void
+{
+if(!logoutMode) return;
+
+for(r in accountRows)
+{
+remove(r, true);
+r.destroy();
+}
+accountRows = [];
+
+var accounts:Array<Dynamic> = backend.UserSession.getAccounts();
+var active:String = backend.UserSession.username;
+var slotY:Float = cardY + 172;
+
+for(i in 0...backend.UserSession.MAX_ACCOUNTS)
+{
+var label:String = "";
+var color:Int = FlxColor.WHITE;
+
+if(i < accounts.length)
+{
+var acc:Dynamic = accounts[i];
+var name:String = Std.string(acc.username);
+var pts:Int = (acc.points != null) ? Std.int(acc.points) : 0;
+var isActive:Bool = (active != null && name.toLowerCase() == active.toLowerCase());
+label = (isActive ? "> " : "") + name + "   " + pts + " P" + (isActive ? "  (aktif)" : "");
+color = isActive ? 0xFFFFD34D : FlxColor.WHITE;
+}
+else
+{
+label = "+ Giris yap";
+color = 0xFF9B6DFF;
+}
+
+var row:FlxText = new FlxText(cardX, slotY + i * 52, cardW, label, 24);
+row.setFormat(Paths.font("vcr.ttf"), 24, color, CENTER, FlxTextBorderStyle.OUTLINE, FlxColor.BLACK);
+add(row);
+accountRows.push(row);
+}
+
+updatePointsLabel();
+}
+
+/** Kayitli hesaba gec (puan o hesabin kendi puani). */
+function trySwitchTo(name:String):Void
+{
+var active:String = backend.UserSession.username;
+if(active != null && active.toLowerCase() == name.toLowerCase())
+{
+doRefreshPoints(); // zaten aktif hesap: puanini yenile
+return;
+}
+
+// Cikis yaptigimiz hesabin puani sunucuya da yazilsin
+pushPoints(active, backend.UserSession.userId, backend.UserSession.points);
+
+if(backend.UserSession.switchAccount(name))
+{
+FlxG.sound.play(Paths.sound("confirmMenu"));
+statusText.color = FlxColor.GREEN;
+statusText.text = name + " hesabina gecildi (" + backend.UserSession.points + " puan)";
+renderAccounts();
+doRefreshPoints(true);
+}
+}
+
+/** Bos slota basildi: giris formunu ac (mevcut hesaplar korunur). */
+function addAnotherAccount():Void
+{
+FlxG.sound.play(Paths.sound("scrollMenu"));
+MusicBeatState.switchState(new LoginState(true));
+}
+
+/** "Cikis Yap": aktif hesabi listeden cikarir (puani sunucuda kalir). */
+function removeActiveAccount():Void
+{
+var active:String = backend.UserSession.username;
+if(active == null) return;
+
+pushPoints(active, backend.UserSession.userId, backend.UserSession.points);
+backend.UserSession.removeAccount(active);
+FlxG.sound.play(Paths.sound("cancelMenu"));
+
+if(backend.UserSession.accountCount() > 0)
+{
+statusText.color = FlxColor.GRAY;
+statusText.text = active + " cikarildi";
+renderAccounts();
+}
+else
+{
+MusicBeatState.switchState(new LoginState(true));
+}
+}
+
+/** Puanlari sunucuya yaz (arka planda, oyunu bekletmez). */
+function pushPoints(uname:String, uid:Int, pts:Int):Void
+{
+if(uname == null || uid < 0 || pts <= 0) return;
+Thread.create(function()
+{
+try
+{
+var up:Http = new Http(SERVER_URL + "/sync");
+up.cnxTimeout = 20;
+up.setHeader("Content-Type", "application/json");
+up.setPostData(Json.stringify({user_id: uid, points: pts, username: uname}));
+up.request(false);
+}
+catch(e:Dynamic) {}
+});
 }
 
 /**
