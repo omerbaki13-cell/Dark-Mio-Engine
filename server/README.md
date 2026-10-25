@@ -52,8 +52,12 @@ Demo olmadan paneli denemek istersen: `/panel` → **Demo modu** düğmesi
 
 ## 2. Supabase ile gerçek kurulum
 
-1. Supabase projesi aç → **SQL Editor** → `supabase/migration.sql` dosyasının
-   tamamını yapıştır ve çalıştır. Bu; `users` (puan kolonu dahil), `scores`,
+1. Supabase projesi aç → **SQL Editor** → `server/supabase/migration.sql` dosyasının
+   tamamını yapıştır ve çalıştır.
+   - Tablolar zaten var ama birkaçı eksikse `server/supabase/fix-tables.sql`
+     dosyasını çalıştır (her ifade tek satır, kopyalama bozulmasına dayanıklı).
+   - **Dashboard'daki "Connect" penceresi tablo oluşturmaz**; sadece URL ve
+     anahtarları gösterir. Tablolar yalnızca SQL Editor ile oluşur. Bu; `users` (puan kolonu dahil), `scores`,
    `matches` ve `admin_logs` tablolarını + indeksleri oluşturur.
 2. **Project Settings → API** bölümünden şu iki değeri al:
    - `Project URL` → `SUPABASE_URL`
@@ -117,7 +121,7 @@ Tüm cevaplar JSON. Hata formatı: `{ "success": false, "error": "mesaj" }`.
 
 | Metot | Yol | Gövde / Sorgu | Cevap |
 | --- | --- | --- | --- |
-| `GET` | `/health` | — | `{status, storage, admin_enabled, detail}` |
+| `GET` | `/health` | — | `{status, storage, admin_enabled, detail}` — `detail.missing_tables` eksik tabloları listeler |
 | `POST` | `/register` | `{username, password}` | `{success, user_id, username, points}` · `409` kullanıcı varsa |
 | `POST` | `/login` | `{username, password}` | `{success, user_id, username, points}` · `401` hatalıysa |
 | `POST` | `/score` | `{user_id, score, song_name, points?, match_id?}` | `{success, points, added, duplicate}` |

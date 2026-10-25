@@ -225,10 +225,29 @@ function createSupabaseDb(url, serviceKey) {
 
     async health() {
       const res = await selectUsers('id, username, points', (q) => q.limit(1));
+
+      // Servisin ihtiyac duydugu tablolar gercekten var mi?
+      // (Supabase'de SQL calistirilmadiysa burada gorunur.)
+      const required = ['users', 'scores', 'matches', 'admin_logs'];
+      const missing = [];
+      await Promise.all(required.map(async (table) => {
+        const r = await supabase.from(table).select('*', { head: true, count: 'exact' }).limit(1);
+        if (r.error) {
+          const msg = String(r.error.message || '');
+          if (r.error.code === 'PGRST205' || /could not find the table|does not exist/i.test(msg)) {
+            missing.push(table);
+          }
+        }
+      }));
+
       return {
         ok: !res.error,
         detail: {
           points_column: pointsColumn,
+          missing_tables: missing.sort(),
+          setup_hint: missing.length
+            ? 'Supabase > SQL Editor: server/supabase/migration.sql calistir'
+            : null,
           error: res.error ? res.error.message : null,
         },
       };
