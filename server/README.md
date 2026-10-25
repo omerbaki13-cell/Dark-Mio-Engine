@@ -128,6 +128,8 @@ Tüm cevaplar JSON. Hata formatı: `{ "success": false, "error": "mesaj" }`.
 | `GET` | `/leaderboard` | `?limit=25` | `{leaderboard:[{rank,user_id,username,points,songs_played,best_score,last_played}], updated_at}` |
 | `GET` | `/profile/:id` | — | `{success, user_id, username, points, songs_played, best_score, last_played}` |
 | `GET` | `/profile` | `?username=baki` | aynı (istemci eski `user_id` taşıyorsa doğru kimliği bulur) |
+| `POST` | `/matches` | `{match_id, username, user_id, song, score, points, ...}` | `{success, archived, duplicate, missing_table}` — maç kaydı arşivi (Supabase tablosu yoksa sunucu kendi depolar) |
+| `GET` | `/matches` | `?limit=50` | `{matches:[...]}` — son maç kayıtları |
 | `POST` | `/sync` | `{user_id, points}` | `{success, points, added}` — sadece **yukarı** yazar, puan asla azalmaz |
 
 `/profile` ve `/sync`, oyunun **"PUANI YENILE"** düğmesi içindir: sunucudaki puanı
