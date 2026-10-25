@@ -1,0 +1,44 @@
+name: iOS Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Haxe
+        uses: krdlab/setup-haxe@master
+        with:
+          haxe-version: 4.3.6
+
+      - name: Install Libraries
+        run: sh ./setup/unix.sh
+
+      - name: Build iOS app
+        run: haxelib run lime build ios -final -nosign -D officialBuild
+
+      - name: Package unsigned IPA
+        shell: bash
+        run: |
+          app_path="$(find export/release/ios/build/Release-iphoneos -maxdepth 1 -type d -name '*.app' -print -quit)"
+          if [[ -z "$app_path" ]]; then
+            echo "iOS .app bundle was not produced."
+            exit 1
+          fi
+          mkdir Payload
+          cp -R "$app_path" Payload/
+          zip -r Mio-Engine.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mio-Engine-iOS
+          path: Mio-Engine.ipa
+          if-no-files-found: error
