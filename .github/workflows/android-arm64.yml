@@ -24,13 +24,21 @@ jobs:
         with:
           haxe-version: 4.3.6
 
-      - name: Haxe kütüphaneleri
+        - name: Haxe kütüphaneleri
         run: |
           haxelib setup ~/haxelib
           haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp
-          haxelib git lime https://github.com/openfl/lime
           haxelib install format
           haxelib install hxp
+          haxelib git lime https://github.com/kittycathy233/lime
+          haxelib install openfl
+          haxelib install flixel
+          haxelib install flixel-addons 3.3.2
+          haxelib install flixel-ui
+          haxelib install tjson 1.4.0
+          haxelib git linc_luajit https://github.com/superpowers04/linc_luajit
+          haxelib git hscript-iris https://github.com/crowplexus/hscript-iris
+          haxelib git flxanimate https://github.com/Dot-Stuff/flxanimate
           haxelib install hxcpp-debug-server || true
           # buraya projenin kendi kütüphanelerini ekle:
           # haxelib install flixel
