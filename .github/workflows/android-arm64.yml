@@ -45,7 +45,8 @@ jobs:
         run: |
           cd ~/haxelib/hxcpp/git/tools/hxcpp && haxe compile.hxml
           haxelib run lime setup -y
-          NDK=$(ls -d $ANDROID_HOME/ndk/* | sort -V | tail -1)
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "ndk;25.2.9519653" >/dev/null
+          NDK=$ANDROID_HOME/ndk/25.2.9519653
           haxelib run lime config ANDROID_SDK $ANDROID_HOME
           haxelib run lime config ANDROID_NDK_ROOT $NDK
           haxelib run lime config JAVA_HOME $JAVA_HOME_17_X64
