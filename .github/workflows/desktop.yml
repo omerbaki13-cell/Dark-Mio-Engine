@@ -1,0 +1,57 @@
+name: Desktop Build (Win/Linux/Mac)
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            target: linux
+          - os: windows-latest
+            target: windows
+          - os: macos-latest
+            target: macos
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: krdlab/setup-haxe@v1
+        with:
+          haxe-version: 4.3.6
+
+      - name: Linux bağımlılıkları
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y g++ libgl1-mesa-dev libglu1-mesa-dev \
+            libasound2-dev libpulse-dev libx11-dev libxext-dev libxi-dev \
+            libxrandr-dev libxinerama-dev libdbus-1-dev libudev-dev
+
+      - name: Haxe kütüphaneleri
+        run: |
+          haxelib setup ~/haxelib
+          haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp
+          haxelib git lime https://github.com/openfl/lime
+          # projenin diğer haxelib'lerini buraya ekle
+
+      - name: Lime kurulum
+        run: |
+          cd "$(haxelib libpath hxcpp)/tools/hxcpp" && haxe compile.hxml
+          haxelib run lime setup -y
+          haxelib run lime rebuild ${{ matrix.target }}
+
+      - name: Derle
+        run: haxelib run lime build ${{ matrix.target }} -release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mio-Engine-${{ matrix.target }}
+          path: export/release/${{ matrix.target }}/bin

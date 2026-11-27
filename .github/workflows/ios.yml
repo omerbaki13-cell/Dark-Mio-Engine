@@ -1,0 +1,43 @@
+name: iOS Build (IPA)
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: krdlab/setup-haxe@v1
+        with:
+          haxe-version: 4.3.6
+
+      - name: Haxe kütüphaneleri
+        run: |
+          haxelib setup ~/haxelib
+          haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp
+          haxelib git lime https://github.com/openfl/lime
+          # projenin diğer haxelib'lerini buraya ekle
+
+      - name: Lime kurulum
+        run: |
+          cd "$(haxelib libpath hxcpp)/tools/hxcpp" && haxe compile.hxml
+          haxelib run lime setup -y
+          haxelib run lime rebuild ios
+
+      - name: Derle (imzasız)
+        run: haxelib run lime build ios -release -nosign
+
+      - name: IPA oluştur
+        run: |
+          APP=$(find export/release/ios -name "*.app" -maxdepth 8 | head -1)
+          echo "Bulunan: $APP"
+          mkdir Payload && cp -R "$APP" Payload/
+          zip -qr Mio-Engine.ipa Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mio-Engine-ipa
+          path: Mio-Engine.ipa

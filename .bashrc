@@ -1,5 +1,4 @@
-alias drl='echo "Android Derlemesi Başlıyor" && haxelib run lime build android'
-alias dr='echo "Debug Android Derlemesi Başlıyor" && haxelib run lime build android -debug'
+alias ad='echo "Android Derlemesi Başlıyor" && gh workflow run android-arm64.yml'
 alias ll='echo "Linux Derlemesi Başlıyor" && haxelib run lime build linux'
 alias lw='echo "Windows Derlemesi Başlıyor" && haxelib run lime build windows -mingw -D mingw -D no_shared_libs'
 alias li='echo "iOS bulut derlemesi başlatılıyor" && gh workflow run ios-build.yml --repo omerbaki13-cell/Dark-Mio-Engine --ref "$(git branch --show-current)"'
