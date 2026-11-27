@@ -32,7 +32,7 @@ jobs:
           haxelib install hxp
           haxelib git lime https://github.com/kittycathy233/lime
           haxelib install openfl
-          haxelib install flixel
+          haxelib install flixel 5.8.0
           haxelib install flixel-addons 3.3.2
           haxelib install flixel-ui
           haxelib install tjson 1.4.0
