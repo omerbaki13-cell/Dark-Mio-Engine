@@ -51,7 +51,7 @@ jobs:
           haxelib run lime config ANDROID_NDK_ROOT $NDK
           haxelib run lime config JAVA_HOME $JAVA_HOME_17_X64
           haxelib run lime config ANDROID_SETUP true
-          sed -i 's|<compilerflag value="-fPIC"/>|<compilerflag value="-fPIC"/>\n  <compilerflag value="-fcommon"/>|' ~/haxelib/hxcpp/git/toolchain/android-toolchain.xml
+          sed -i 's|<flag value="-fpic"/>|<flag value="-fpic"/>\n  <flag value="-fcommon"/>|' ~/haxelib/hxcpp/git/toolchain/android-toolchain-clang.xml
           haxelib run lime rebuild android -arm64
 
       - name: APK derle
