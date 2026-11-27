@@ -24,7 +24,15 @@ jobs:
         with:
           haxe-version: 4.3.6
 
+      - name: Haxelib önbelleği
+        id: cache-haxelib
+        uses: actions/cache@v4
+        with:
+          path: ~/haxelib
+          key: haxelib-android-arm64-v1
+
       - name: Haxe kütüphaneleri
+        if: steps.cache-haxelib.outputs.cache-hit != 'true'
         run: |
           haxelib setup ~/haxelib
           haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp
