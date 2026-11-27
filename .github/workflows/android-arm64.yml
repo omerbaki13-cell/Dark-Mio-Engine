@@ -2,7 +2,7 @@ name: Android Build (arm64)
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, "arena/be2313e8-dark-mio-engine"]
 
 permissions:
   contents: write
