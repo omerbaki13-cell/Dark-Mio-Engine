@@ -24,7 +24,7 @@ jobs:
         with:
           haxe-version: 4.3.6
 
-        - name: Haxe kütüphaneleri
+      - name: Haxe kütüphaneleri
         run: |
           haxelib setup ~/haxelib
           haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp
@@ -40,9 +40,6 @@ jobs:
           haxelib git hscript-iris https://github.com/crowplexus/hscript-iris
           haxelib git flxanimate https://github.com/Dot-Stuff/flxanimate
           haxelib install hxcpp-debug-server || true
-          # buraya projenin kendi kütüphanelerini ekle:
-          # haxelib install flixel
-          # haxelib git linc_luajit https://github.com/...
 
       - name: Lime ve Android ayarı
         run: |
