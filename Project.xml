@@ -7,8 +7,9 @@
 	<!--Switch Export with Unique ApplicationID and Icon-->
 	<set name="APP_ID" value="0x0100f6c013bbc000" />
 
-	<!-- NOTE TO SELF: DISABLE THIS IF ISSUES ARE FOUND -->
-	<haxedef name="LINC_LUA_RELATIVE_DYNAMIC_LIB"/> <!-- stable luas PUT AFTER FIRST LINE WITH APP NAME AND ETC -->
+	<!-- NOTE TO SELF: DISABLE THIS IF ISSUES ARE FOUND -->	
+        <haxedef name="HXCPP_ALIGN_ALLOC" />
+        <haxedef name="LINC_LUA_RELATIVE_DYNAMIC_LIB"/> <!-- stable luas PUT AFTER FIRST LINE WITH APP NAME AND ETC -->
 
 	<!--The flixel preloader is not accurate in Chrome. You can use it regularly if you embed the swf into a html file
 		or you can set the actual size of your file manually at "FlxPreloaderBase-onUpdate-bytesTotal"-->
@@ -117,7 +118,7 @@
 	<config:android permission="android.permission.MANAGE_EXTERNAL_STORAGE" />
 	<haxelib name="flixel"/>
 	<haxelib name="flixel-addons" version="3.3.2"/>
-<haxelib name="flixel-ui"/>
+        <haxelib name="flixel-ui"/>
 	<haxelib name="tjson" version="1.4.0"/>
 
 	<!--Psych stuff needed-->
@@ -129,7 +130,9 @@
 
 	<!-- Disable Discord IO Thread -->
 	<haxedef name="DISCORD_DISABLE_IO_THREAD" if="hxdiscord_rpc" />
-	<haxedef name="NO_PRECOMPILED_HEADERS" if="linux" />
+	<haxedef name="HXCPP_ARM64" />
+        <architecture name="x86_64" />
+        <haxedef name="NO_PRECOMPILED_HEADERS" if="linux" />
 
 	<!-- Enables a terminal log prompt on debug builds -->
 	<haxelib name="hxcpp-debug-server" if="debug"/>
