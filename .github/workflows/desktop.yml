@@ -40,6 +40,8 @@ jobs:
           haxelib setup ~/haxelib
           haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp
           haxelib git lime https://github.com/openfl/lime
+          haxelib install format
+          haxelib install hxp
           # projenin diğer haxelib'lerini buraya ekle
 
       - name: Lime kurulum

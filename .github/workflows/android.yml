@@ -26,6 +26,8 @@ jobs:
           haxelib setup ~/haxelib
           haxelib git hxcpp https://github.com/HaxeFoundation/hxcpp
           haxelib git lime https://github.com/openfl/lime
+          haxelib install format
+          haxelib install hxp
           haxelib install hxcpp-debug-server || true
           # buraya projenin kendi kütüphanelerini ekle:
           # haxelib install flixel

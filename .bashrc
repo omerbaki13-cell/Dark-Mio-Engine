@@ -1,3 +1,4 @@
+# Derleme Kısayollaeı
 alias ad='echo "Android Derlemesi Başlıyor" && gh workflow run android-arm64.yml'
 alias ll='echo "Linux Derlemesi Başlıyor" && haxelib run lime build linux'
 alias lw='echo "Windows Derlemesi Başlıyor" && haxelib run lime build windows -mingw -D mingw -D no_shared_libs'
@@ -5,7 +6,7 @@ alias li='echo "iOS bulut derlemesi başlatılıyor" && gh workflow run ios-buil
 alias ad='echo "Tüm Derlemeler Başlıyor" && drl && li && lw && ll'
 alias c='clear'
 alias a='cd ~'
-alias s='source ~/.bashrc'
-alias so='source .oldrc'
+alias sm='source ~/Vs-Code/Dark-Mio-Engine/.bashrc'
+alias nd='nano ~/Vs-Code/Dark-Mio-Engine/.bashrc'
 alias gual='git pull origin main'
 alias gunc='read -p "Commit mesajı: " msg && git add . && git commit -m "$msg" && git push origin $(git branch --show-current)'
