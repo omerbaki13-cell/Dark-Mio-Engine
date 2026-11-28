@@ -63,7 +63,9 @@ jobs:
           haxelib run lime rebuild android -arm64
 
       - name: APK derle
-        run: haxelib run lime build android -arm64 -release -DHXCPP_ARM64
+        run: |
+          set -x
+          haxelib run lime build android -arm64 -release -DHXCPP_ARM64 || exit 1
 
       - uses: actions/upload-artifact@v4
         with:
