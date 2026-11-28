@@ -49,6 +49,11 @@ jobs:
           haxelib git flxanimate https://github.com/Dot-Stuff/flxanimate
           haxelib install hxcpp-debug-server || true
 
+      - name: LuaJIT kontrol
+        run: |
+          cat ~/haxelib/linc_luajit/git/linc_luajit.xml
+          ls ~/haxelib/linc_luajit/git/lib/lua/lib/Android/
+
       - name: Lime ve Android ayarı
         run: |
           cd ~/haxelib/hxcpp/git/tools/hxcpp && haxe compile.hxml
