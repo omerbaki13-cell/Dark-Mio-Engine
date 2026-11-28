@@ -51,8 +51,10 @@ jobs:
 
       - name: LuaJIT kontrol
         run: |
-          cat ~/haxelib/linc_luajit/git/linc_luajit.xml
-          ls ~/haxelib/linc_luajit/git/lib/lua/lib/Android/
+          ls ~/haxelib/linc_luajit/git/ || true
+          ls ~/haxelib/linc_luajit/git/lib/lua/lib/Android/ || true
+          find ~/haxelib/linc_luajit/git -name "*.xml" | head
+          for f in $(find ~/haxelib/linc_luajit/git -name "*.xml" | head -3); do echo "=== $f"; cat "$f"; done
 
       - name: Lime ve Android ayarı
         run: |
